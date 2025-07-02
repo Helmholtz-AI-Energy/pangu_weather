@@ -1,0 +1,3 @@
+[submodule "pangu-pytorch"]
+	path = pangu_pytorch
+	url = https://github.com/zhaoshan2/pangu-pytorch.git
