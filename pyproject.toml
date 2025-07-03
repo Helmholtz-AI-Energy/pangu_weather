@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pangu_weather"
+version = "0.0.1"
+dependencies = [
+  "torch",
+  "timm",
+]
+requires-python = ">=3.9"
+description = "A PyTorch Implementation of Pangu-Weather with Multi-Sample Batch Support"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
