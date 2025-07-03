@@ -4,7 +4,7 @@ from collections import OrderedDict
 import torch
 import timm.layers
 
-from pangu_weather.layers import PatchEmbedding, DownSample, EarthSpecificLayer, UpSample  #, PatchRecovery
+from pangu_weather.layers import PatchEmbedding, DownSample, EarthSpecificLayer, UpSample, PatchRecovery
 
 
 logger = logging.getLogger(__name__)
@@ -132,5 +132,5 @@ class PanguWeather(torch.nn.Module):
         # Pass through backbone: patch embedding, encoder, and decoder
         x = self.backbone(upper_air_data, surface_data)
         # Patch recovery to extract output
-        x = self._output_layer(x, 8, 181, 360)
+        x = self._output_layer(x)
         return x  # upper_air_prediction, surface_prediction

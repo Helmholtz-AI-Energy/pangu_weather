@@ -79,6 +79,8 @@ class PatchEmbedding(torch.nn.Module):
         return permuted_x.reshape(batch_size, feature_dim, -1)
 
     def forward(self, upper_air_data, surface_data):
+        # TODO: seems like the comments for the shapes are not 100% up to date and B is sometimes given as 1 even though
+        #       we support B > 1 -> check and update these comments
         # -------------- embedding of surface variables --------------
         # normalize surface level input, input_surface.shape = [B, 4, 721, 1440],
         normalized_input_surface = (surface_data - self.surface_mean) / self.surface_std
@@ -114,6 +116,74 @@ class PatchEmbedding(torch.nn.Module):
         x = torch.cat((patched_surface, patched_upper), dim=2)
         x = torch.permute(x, (0, 2, 1))
         return x
+
+
+class PatchRecovery(torch.nn.Module):
+    def __init__(self, dimension=384, patch_size=(2, 4, 4), zhw=(8, 181, 360), original_hw=(721, 1440)):
+        super().__init__()
+        self.patch_size = patch_size
+        self.zhw = zhw
+        self.original_hw = original_hw
+        self.pressure_levels = 13
+        surface_variables = 4
+        upper_variables = 5
+        self.conv = torch.nn.Conv1d(
+            in_channels=dimension, out_channels=upper_variables * np.prod(patch_size), kernel_size=1)
+        self.conv_surface = torch.nn.Conv1d(
+            in_channels=dimension, out_channels=surface_variables * np.prod(patch_size[1:]), kernel_size=1)
+
+    @staticmethod
+    def recover_from_patches(x, patch_size, zhw, original_dims):
+        # Input: for surface (2D): [B, 64, 65160],  for upper air (3D): [B, 160, 456120]
+        batch_size = x.shape[0]
+        patch_dims = zhw[-len(patch_size):]
+        original_dims = original_dims[-len(patch_size):]
+        padded_dims = [true_dim + (patch - true_dim) % patch for patch, true_dim in zip(patch_size, original_dims)]
+
+        # Recover [724, 1440] from patches
+        # for surface (2D): [B, 64, 65160] --view-> [B, 4, 4, 4, 181, 360] --permute-> [B, 4, 181, 4, 360, 4]
+        #                   --reshape-> [B, 4, 724, 1440]
+        # for upper air (3D): [B, 160, 456120] --view-> [B, 5, 2, 4, 4, 7, 181, 360]
+        #                     --permute-> [B, 5, 7, 2, 181, 4, 360, 4] --reshape-> [B, 5, 14, 724, 1440]
+        x = x.view(batch_size, -1, *patch_size, *patch_dims)
+        old_dim_order = tuple(range(len(x.shape)))
+        patch_dim = len(patch_size)
+        new_dim_order = (*old_dim_order[:2], *[2 + i + offset for i in range(patch_dim) for offset in [patch_dim, 0]])
+        x = x.permute(new_dim_order)
+        x = x.reshape(batch_size, -1, *padded_dims)
+
+        # Crop to remove zero padding
+        # for surface (2D): [B, 4, 724, 1440] --crop--> [B, 4, 721, 1440]
+        # for upper air (3D): [B, 5, 14, 724, 1440] --crop--> [B, 5, 13, 721, 1440]
+        x = x[(Ellipsis, *[slice(dim) for dim in original_dims])]
+
+        return x
+
+    def forward(self, x):
+        # Reshape back to three dimensions [B, 521280, 384] -> [B, 384, 521280] -> [B, 384, 8, 181, 360]
+        x = torch.permute(x, (0, 2, 1))
+        x = x.view(*x.shape[:2], *self.zhw)
+
+        # Split into surface and upper variables
+        x_surface = x[:, :, 0, :, :]  # [B, 384, 181, 360]
+        x_upper = x[:, :, 1:, :, :]  # [B, 384, 7, 181, 360]
+
+        # Process surface variables
+        # Reshape back to 1D and apply convolution: [B, 384, 181, 360] --view-> [B, 384, 65160] --conv-> [B, 64, 65160]
+        x_surface = x_surface.view(*x_surface.shape[:2], -1)
+        x_surface = self.conv_surface(x_surface)
+        # Recover patches: [B, 64, 65160] -> [B, 4, 721, 1440]
+        x_surface = self.recover_from_patches(x_surface, self.patch_size[1:], self.zhw, self.original_hw)
+
+        # Process upper air variables
+        # Reshape to 1D and apply convolution: [B, 384, 7, 181, 360] --view-> [B, 384, 456120] --conv-> [B, 160, 456120]
+        x_upper = x_upper.view(*x_upper.shape[:2], -1)
+        x_upper = self.conv(x_upper)
+        # Recover patches: [B, 160, 456120] -> [B, 5, 13, 721, 1440]
+        x_upper = self.recover_from_patches(
+            x_upper, self.patch_size, (self.zhw[0] - 1, *self.zhw[1:]), (self.pressure_levels, *self.original_hw))
+
+        return x_upper, x_surface
 
 
 def pad_to_shape(x, shape):
