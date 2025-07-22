@@ -19,3 +19,7 @@ license-files = ["LICENSE"]
 dev = [
     "pytest",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["pangu_pytorch"]
