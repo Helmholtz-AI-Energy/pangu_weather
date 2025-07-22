@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from pangu_weather.layers import PatchEmbedding
-from pangu_pytorch.models.layers import PatchEmbedding_pretrain
+from tests.test_against_pangu_pytorch.pangu_pytorch.models.layers import PatchEmbedding_pretrain
 from tests.conftest import get_available_torch_devices
 
 

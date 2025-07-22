@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from pangu_weather.layers import MLP
-import pangu_pytorch.models.layers as pangu_pytorch_layers
+import tests.test_against_pangu_pytorch.pangu_pytorch.models.layers as pangu_pytorch_layers
 from tests.conftest import get_available_torch_devices
 
 
