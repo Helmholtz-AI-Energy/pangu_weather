@@ -1,6 +1,7 @@
 import argparse
 import time
 
+import fvcore.nn
 import torch
 import tqdm
 
@@ -26,6 +27,25 @@ def generate_random_auxiliary_data(seed=0):
 def initialize_pangu_weather(seed=0):
     weather_statistics, constant_maps, const_h = generate_random_auxiliary_data(seed)
     return pangu_weather.PanguWeather(weather_statistics, constant_maps, const_h)
+
+
+def measure_flops(model, inputs, device, iterations=10, runtime=None):
+    model = model.to(device).eval()
+    inputs = tuple(x.to(device) for x in inputs)
+
+    flop_count = fvcore.nn.FlopCountAnalysis(model, inputs)
+    flops = flop_count.total()
+
+    if runtime is None:
+        timer = Timer(print_on_exit=False)
+        for _ in range(iterations):
+            with timer:
+                model(*inputs)
+
+        runtime = timer.elapsed_time_s
+    flops_per_second = flops / runtime
+
+    return flops, flops_per_second, runtime
 
 
 def benchmark_earth_specific_block_on_dummy_data(batch_size, iterations, device, inner=False, base_dim=192,
@@ -200,7 +220,7 @@ def summarize_results(iteration_times, label, aggs=None):
         'std': iteration_times.std(),
     }
     print(f'Benchmark results for {label}:\n' + '\n'.join(
-        f'{key:>20}: {value}' for key, value in results.items() if aggs is None or key in aggs))
+        f'{key:>20}: {value:.6f}' for key, value in results.items() if aggs is None or key in aggs))
 
 
 def benchmark_inference_on_dummy_data(model, input_shapes, iterations, device, name="", seed=0):
@@ -213,12 +233,13 @@ def benchmark_inference_on_dummy_data(model, input_shapes, iterations, device, n
 
     with torch.no_grad():
         for i in tqdm.trange(iterations, desc=label, ncols=len(label) + 80):
-            start_time = time.perf_counter()
-            model(*x)
-            end_time = time.perf_counter()
-            iteration_times[i] = end_time - start_time
+            with Timer(print_on_exit=False) as t:
+                model(*x)
+            iteration_times[i] = t.elapsed_time_s
+        flops, flops_per_second, _ = measure_flops(model, x, device, runtime=iteration_times.mean().item())
 
     summarize_results(iteration_times, label)
+    print(f'Total FLOPS: {flops}, FLOPS/s {flops_per_second}')
 
 
 def benchmark_pangu_inference_on_dummy_data(batch_size, iterations, device):

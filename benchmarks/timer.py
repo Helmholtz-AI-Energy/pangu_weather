@@ -39,6 +39,10 @@ class Timer(ContextTracker):
     def elapsed_time_gpu_s(self):
         return self._elapsed_time_gpu.average / 1000  # ms to s
 
+    @property
+    def elapsed_time_s(self):
+        return self.elapsed_time_gpu_s if torch.cuda.is_available() else self.elapsed_time_cpu_s
+
     def reset(self):
         self._elapsed_time_cpu.reset()
         self._elapsed_time_gpu.reset()
