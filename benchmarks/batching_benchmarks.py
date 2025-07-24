@@ -1,6 +1,6 @@
 import argparse
-import time
 
+from deepspeed.profiling.flops_profiler import get_model_profile
 import fvcore.nn
 import torch
 import tqdm
@@ -34,7 +34,12 @@ def measure_flops(model, inputs, device, iterations=10, runtime=None):
     inputs = tuple(x.to(device) for x in inputs)
 
     flop_count = fvcore.nn.FlopCountAnalysis(model, inputs)
-    flops = flop_count.total()
+    fvcore_flops = flop_count.total()
+
+    deepspeed_flops, macs, params = get_model_profile(model=model, args=list(inputs), as_string=False)
+
+    print(f'{fvcore_flops=}, {deepspeed_flops=}')
+    flops = deepspeed_flops
 
     if runtime is None:
         timer = Timer(print_on_exit=False)
@@ -239,7 +244,7 @@ def benchmark_inference_on_dummy_data(model, input_shapes, iterations, device, n
         flops, flops_per_second, _ = measure_flops(model, x, device, runtime=iteration_times.mean().item())
 
     summarize_results(iteration_times, label)
-    print(f'Total FLOPS: {flops}, FLOPS/s {flops_per_second}')
+    print(f'Total FLOPS: {flops}, GFLOPS/s {flops_per_second / 1e9:.3f}')
 
 
 def benchmark_pangu_inference_on_dummy_data(batch_size, iterations, device):
