@@ -36,7 +36,8 @@ def measure_flops(model, inputs, device, iterations=10, runtime=None):
     flop_count = fvcore.nn.FlopCountAnalysis(model, inputs)
     fvcore_flops = flop_count.total()
 
-    deepspeed_flops, macs, params = get_model_profile(model=model, args=list(inputs), as_string=False)
+    deepspeed_flops, macs, params = get_model_profile(model=model, args=list(inputs), as_string=False,
+                                                      print_profile=False)
 
     print(f'{fvcore_flops=}, {deepspeed_flops=}')
     flops = deepspeed_flops
