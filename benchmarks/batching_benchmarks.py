@@ -46,7 +46,7 @@ def benchmark_earth_specific_block_on_dummy_data(batch_size, iterations, device,
     earth_specific_block = pangu_weather.layers.EarthSpecificBlock(
         layer_dim, drop_path, roll, zhw, num_heads, reproduce_mask=reproduce_mask).to(device).eval()
     generator = torch.Generator().manual_seed(seed)
-    x = torch.rand(input_shape, generator=generator, device=device)
+    x = torch.rand(input_shape, generator=generator).to(device)
     iteration_times = {}  # key: torch.zeros(iterations) for key in stages
     kwargs = {'x': x}
 
