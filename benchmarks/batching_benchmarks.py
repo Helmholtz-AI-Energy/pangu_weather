@@ -254,6 +254,19 @@ def benchmark_pangu_inference_on_dummy_data(batch_size, iterations, device):
     benchmark_inference_on_dummy_data(model, input_shapes, iterations, device, name=f"PanguWeather with {batch_size=}")
 
 
+def raw_inference_on_dummy_data(batch_size, iterations, device):
+    model = initialize_pangu_weather().eval().to(device)
+    input_shapes = [(batch_size, 5, 13, 721, 1440), (batch_size, 4, 721, 1440)]
+    x = [torch.rand(shape).to(device) for shape in input_shapes]
+
+    with Timer(print_on_exit=False) as t:
+        with torch.no_grad():
+            for _ in range(iterations):
+                model(*x)
+    print(f'Pangu-Inference on Dummy-Data with {batch_size=}, {iterations=}, {device=}. '
+          f'Avg. time: {t.elapsed_time_s / iterations:.3f}s')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("PanguWeather Benchmarks")
     parser.add_argument("--batch_sizes", "-b", type=int, nargs="+", default=[1])
@@ -262,6 +275,7 @@ if __name__ == '__main__':
     config = parser.parse_args()
 
     for batch_size in config.batch_sizes:
+        raw_inference_on_dummy_data(batch_size, config.iterations, config.device)
         # benchmark_pangu_inference_on_dummy_data(batch_size, config.iterations, config.device)
         # benchmark_layers_on_dummy_data(batch_size, config.iterations, config.device)
         benchmark_earth_specific_block_on_dummy_data(batch_size, config.iterations, config.device, inner=False)
