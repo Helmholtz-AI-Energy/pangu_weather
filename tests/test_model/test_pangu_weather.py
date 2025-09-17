@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from pangu_weather.pangu_weather import PanguWeather, PanguWeatherBackbone
-from tests.test_against_pangu_pytorch import pangu_pytorch_model
+import pangu_pytorch_model
 
 
 @pytest.mark.parametrize("batch_size", [1, 2][:1])

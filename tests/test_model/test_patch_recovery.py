@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from pangu_weather.layers import PatchRecovery
-from tests.test_against_pangu_pytorch.pangu_pytorch.models.layers import PatchRecovery_pretrain
+from pangu_pytorch.models.layers import PatchRecovery_pretrain
 from tests.conftest import get_available_torch_devices
 
 

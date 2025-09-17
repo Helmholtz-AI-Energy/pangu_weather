@@ -4,7 +4,7 @@ import timm.layers
 import torch
 
 
-import tests.test_against_pangu_pytorch.pangu_pytorch.models.layers as pangu_pytorch_layers
+import pangu_pytorch.models.layers as pangu_pytorch_layers
 
 
 class PanguWeatherBackbone(torch.nn.Module):

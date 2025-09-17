@@ -1,3 +1,3 @@
 [submodule "pangu-pytorch"]
-	path = tests/test_against_pangu_pytorch/pangu_pytorch
+	path = tests/test_model/pangu_pytorch
 	url = https://github.com/zhaoshan2/pangu-pytorch.git
