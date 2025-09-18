@@ -19,12 +19,23 @@ def flatten_list(nested_list):
 
 
 class PatchEmbedding(torch.nn.Module):
-    def __init__(self, patch_size, weather_statistics, constant_maps, const_h, dim=192):
+    def __init__(self, patch_size, weather_statistics, constant_maps, const_h, dim=192, normalize_input=True,
+                 with_const_h=True):
         super().__init__()
         self.patch_size = patch_size
         self.dim = dim
-        self.conv = torch.nn.Conv1d(in_channels=192, out_channels=dim, kernel_size=1, stride=1)
-        self.conv_surface = torch.nn.Conv1d(in_channels=112, out_channels=dim, kernel_size=1, stride=1)
+
+        self.normalize_input = normalize_input
+        self.with_const_h = with_const_h
+
+        self.n_features_upper_air = 6 if self.with_const_h else 5
+        self.n_features_surface = 7
+
+        # Setup padding
+        upper_air_padding = self.determine_padding_to_patch_size((13, 721, 1440), self.patch_size)
+        surface_padding = self.determine_padding_to_patch_size((721, 1440), self.patch_size[1:])
+        self.pad3d = torch.nn.ZeroPad3d(upper_air_padding)
+        self.pad2d = torch.nn.ZeroPad2d(surface_padding)
 
         # weather_statistics = mean and std over the ERA5 training data, used to normalize inputs in the patch embedding
         # passed as 4 tuple: (surface_mean, surface_std, upper_air_mean, upper_air_std)
@@ -43,14 +54,107 @@ class PatchEmbedding(torch.nn.Module):
         self.upper_mean = self.upper_mean.flip(0).permute(3, 0, 1, 2)
         self.upper_std = self.upper_std.flip(0).permute(3, 0, 1, 2)
 
+    def prepare_and_pad_surface_input(self, surface_data):
+        """
+        Prepare the surface level input tensor and return the (normalized), padded input with the constant maps.
+
+        Shapes are given for the standard pangu shapes with 721 x 1440 input and patch size (2, 4, 4).
+
+        1. Optional: Normalize the input data with the mean and std.
+           (B, 4, 721, 1440)
+        2. Pad the input to be divisible by the patch size.
+           (B, 4, 721, 1440) -> (B, 4, 724, 1440)
+        3. Concatenate the constant maps (topography, land-sea-mask, and soil type).
+           (B, 4, 721, 1440) -> (B, 7, 724, 1440)
+
+        Parameters
+        ----------
+        surface_data
+            The surface level input to prepare.
+
+        Returns
+        -------
+        torch.Tensor
+            The (normalized and) padded input with the constant maps.
+        """
+        if self.normalize_input:
+            surface_data = (surface_data - self.surface_mean) / self.surface_std
+        surface_data = self.pad2d(surface_data)
+        batch_size = surface_data.shape[0]
+        constant_maps_expanded = self.constant_maps.expand(batch_size, -1, -1, -1)
+        return torch.cat((surface_data, constant_maps_expanded), dim=1)
+
+    def prepare_and_pad_upper_air_input(self, upper_air_data):
+        """
+        Prepare the upper air input tensor and return the (normalized), padded input with optional constant map const_h.
+
+        Shapes are given for the standard pangu shapes with 721 x 1440 input and patch size (2, 4, 4).
+
+        1. Optional: Normalize the input data with the mean and std.
+           (B, 5, 13, 721, 1440)
+        2. Optional: Concatenate the const_h constant map as additional upper air feature.
+           (If enabled, the number of features is increased to 6, otherwise remains 5 -> indicated by 5/6 in shapes.)
+           (B, 5, 13, 721, 1440) -> (B, 5/6, 13, 721, 1440)
+        3. Pad the input to be divisible by the patch size.
+           (B, 5/6, 13, 721, 1440) -> (B, 5/6, 14, 724, 1440)
+
+        Parameters
+        ----------
+        upper_air_data
+            The upper air input to prepare.
+
+        Returns
+        -------
+        torch.Tensor
+            The (normalized and) padded input with optional constant map.
+        """
+        if self.normalize_input:
+            upper_air_data = (upper_air_data - self.upper_mean) / self.upper_std
+        if self.with_const_h:
+            batch_size = upper_air_data.shape[0]
+            const_h_expanded = self.const_h.expand(batch_size, 1, -1, -1, -1)
+            upper_air_data = torch.cat((upper_air_data, const_h_expanded), dim=1)
+        return self.pad3d(upper_air_data)
+
     @staticmethod
-    def pad_to_patch_size(x, patch_size):
-        # how much to patch at the end of each dimension
-        pad_last = [(patch - true_dim) % patch for true_dim, patch in zip(x.shape[::-1], patch_size[::-1])]
-        # build paddings
+    def determine_padding_to_patch_size(input_shape, patch_size):
         padding = [0 for _ in range(2 * len(patch_size))]
-        padding[1::2] = pad_last
-        return torch.nn.functional.pad(x, padding)  # pad with zeros
+        # how much to patch at the end of each dimension
+        padding[1::2] = [(patch - true_dim) % patch for true_dim, patch in zip(input_shape[::-1], patch_size[::-1])]
+        return tuple(padding)
+
+
+class PatchEmbeddingConv3d2d(PatchEmbedding):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.conv = torch.nn.Conv3d(in_channels=self.n_features_upper_air, out_channels=self.dim,
+                                    kernel_size=self.patch_size, stride=self.patch_size)
+        self.conv_surface = torch.nn.Conv2d(in_channels=self.n_features_surface, out_channels=self.dim,
+                                            kernel_size=self.patch_size[1:], stride=self.patch_size[1:])
+
+    def forward(self, upper_air_data, surface_data):
+        # -------------- embedding of surface variables --------------
+        surface_data = self.prepare_and_pad_surface_input(surface_data)             # (B, 7, 724, 1440)
+        patched_surface = self.conv_surface(surface_data)                           # (B, C, 181,  360)
+
+        # -------------- embedding of upper air variables --------------
+        upper_air_data = self.prepare_and_pad_upper_air_input(upper_air_data)       # (B, 5/6, 14, 724, 1440)
+        patched_upper = self.conv(upper_air_data)                                   # (B,   C,  7, 181,  360)
+
+        # -------------- combine surface and upper air and reshape into (B, spatial, C) --------------
+        x = torch.cat((patched_surface.unsqueeze(2), patched_upper), dim=2)  # (B, C, 8, 181, 360)
+        x = torch.permute(x, (0, 2, 3, 4, 1))                                  # (B, 8, 181, 360, C)
+        return x.reshape(x.shape[0], -1, self.dim)           # (B, 8 * 181 * 360, C) = (B,      521280, C)
+
+
+class PatchEmbeddingConv1d(PatchEmbedding):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        in_channels_upper = np.prod(self.patch_size) * self.n_features_upper_air  # default 160/192 without/with const_h
+        self.conv = torch.nn.Conv1d(in_channels=in_channels_upper, out_channels=self.dim, kernel_size=1, stride=1)
+        in_channels_surface = np.prod(self.patch_size[1:]) * self.n_features_surface  # default 112
+        self.conv_surface = torch.nn.Conv1d(
+            in_channels=in_channels_surface, out_channels=self.dim, kernel_size=1, stride=1)
 
     @staticmethod
     def reshape_into_patches(x, patch_size):
@@ -79,42 +183,19 @@ class PatchEmbedding(torch.nn.Module):
         return permuted_x.reshape(batch_size, feature_dim, -1)
 
     def forward(self, upper_air_data, surface_data):
-        # TODO: seems like the comments for the shapes are not 100% up to date and B is sometimes given as 1 even though
-        #       we support B > 1 -> check and update these comments
         # -------------- embedding of surface variables --------------
-        # normalize surface level input, input_surface.shape = [B, 4, 721, 1440],
-        normalized_input_surface = (surface_data - self.surface_mean) / self.surface_std
-
-        # pad surface level input and append constant masks as features
-        # [B, 4, 721, 1440] -- padding --> [B, 4, 724, 1440] -- append masks --> [B, 7, 724, 1440]
-        batch_size = surface_data.shape[0]
-        padded_input_surface = self.pad_to_patch_size(normalized_input_surface, self.patch_size[1:])
-        input_surface_with_masks = torch.cat(
-            (padded_input_surface, self.constant_maps.expand(batch_size, -1, -1, -1)), dim=1)
-
-        # patch embedding: [B, 7, 724, 1440] -- patches --> [B, 112, 65160] -- conv --> [B, self.dim, 65160]
-        patched_surface = self.reshape_into_patches(input_surface_with_masks, self.patch_size[1:])
-        patched_surface = self.conv_surface(patched_surface)
+        surface_data = self.prepare_and_pad_surface_input(surface_data)                 # (B, 7, 724, 1440)
+        patched_surface = self.reshape_into_patches(surface_data, self.patch_size[1:])  # (B, 112, 65160)
+        patched_surface = self.conv_surface(patched_surface)                            # (B,   C, 65160)
 
         # -------------- embedding of upper air variables --------------
-        # normalize upper air input, input.shape = [B, 5, 13, 721, 1440]
-        normalized_input_upper = (upper_air_data - self.upper_mean) / self.upper_std
-
-        # append const_h as features, then pad upper air input
-        # [B, 5, 13, 721, 1440] -- append const_h --> [B, 6, 13, 721, 1440] -- padding --> [B, 6, 14, 724, 1440]
-        # reshape const_h from [1, 1, 1, 13, 721, 1440] to [B, 1, 13, 721, 1440]), broadcasting along batch dimension
-        const_h_expanded = self.const_h.expand(batch_size, 1, -1, -1, -1)
-        input_upper_with_const_h = torch.cat((normalized_input_upper, const_h_expanded), dim=1)
-        padded_input_upper = self.pad_to_patch_size(input_upper_with_const_h, self.patch_size)
-
-        # patch embedding: [B, 6, 14, 724, 1440] -- patches --> [1, 192, 456120] -- conv --> [1, self.dim, 456120]
-        patched_upper = self.reshape_into_patches(padded_input_upper, self.patch_size)
-        patched_upper = self.conv(patched_upper)
+        upper_air_data = self.prepare_and_pad_upper_air_input(upper_air_data)           # (B, 5/6, 14, 724, 1440)
+        patched_upper = self.reshape_into_patches(upper_air_data, self.patch_size)      # (B, 192, 456120)
+        patched_upper = self.conv(patched_upper)                                        # (B,   C, 456120)
 
         # -------------- combine surface and upper air and reshape into (B, spatial, C) --------------
-        # [B, self.dim, 65160] + [1, self.dim, 456120] -> [B, self.dim, 521280] -- permute --> [B, 521280, self.dim]
-        x = torch.cat((patched_surface, patched_upper), dim=2)
-        x = torch.permute(x, (0, 2, 1))
+        x = torch.cat((patched_surface, patched_upper), dim=2)                  # (B, C, 521280)
+        x = torch.permute(x, (0, 2, 1))                                           # (B, 521280, C)
         return x
 
 

@@ -4,7 +4,7 @@ from collections import OrderedDict
 import torch
 import timm.layers
 
-from pangu_weather.layers import PatchEmbedding, DownSample, EarthSpecificLayer, UpSample, PatchRecovery
+from pangu_weather.layers import PatchEmbeddingConv1d, DownSample, EarthSpecificLayer, UpSample, PatchRecovery
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,8 @@ class PanguWeatherBackbone(torch.nn.Module):
 
         # Patch embedding
         self.patch_size = (2, 4, 4)
-        self._input_layer = PatchEmbedding(self.patch_size, weather_statistics, constant_maps, const_h, self.dimension)
+        self._input_layer = PatchEmbeddingConv1d(
+            self.patch_size, weather_statistics, constant_maps, const_h, self.dimension)
 
         # Down- and up-sampling
         self.downsample = DownSample(self.dimension)
