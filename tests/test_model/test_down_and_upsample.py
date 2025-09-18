@@ -6,7 +6,7 @@ import pangu_pytorch.models.layers as pangu_pytorch_layers
 from tests.conftest import get_available_torch_devices
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 @pytest.mark.parametrize("device", get_available_torch_devices())
 def test_downsample_shapes(batch_size, device):
     dim = 192
@@ -21,7 +21,7 @@ def test_downsample_shapes(batch_size, device):
     assert output.shape == expected_output_shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 @pytest.mark.parametrize("device", get_available_torch_devices())
 def test_upsample_shapes(batch_size, device):
     dim = 192
@@ -36,7 +36,7 @@ def test_upsample_shapes(batch_size, device):
     assert output.shape == expected_output_shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 def test_downsample_random_sample(batch_size, best_device):
     dim = 192
     input_shape = (batch_size, 8 * 360 * 181, dim)
@@ -58,7 +58,7 @@ def test_downsample_random_sample(batch_size, best_device):
     assert output.allclose(output_pangu_pytorch)
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 def test_upsample_random_sample(batch_size, best_device):
     dim = 192
     input_shape = (batch_size, 8 * 180 * 91, 2 * dim)

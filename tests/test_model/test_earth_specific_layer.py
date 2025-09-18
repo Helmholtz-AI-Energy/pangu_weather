@@ -1,16 +1,27 @@
+import itertools
+
 import numpy as np
 import pytest
 import torch
 
 from pangu_weather.layers import EarthSpecificLayer
 import pangu_pytorch.models.layers as pangu_pytorch_layers
-from tests.conftest import batch_size_device_product
+from tests.conftest import get_available_torch_devices
 
 
-@pytest.mark.parametrize("batch_size,device", batch_size_device_product())
-@pytest.mark.parametrize("dim,zhw", [(192, (8, 181, 360)), (384, (8, 91, 180))])
-@pytest.mark.parametrize("depth", [1, 2])
-def test_earth_specific_layer_shapes(batch_size, device, dim, zhw, depth):
+BATCH_SIZES = [1, 2, 4]
+ZHW_DIM = [(8, 181, 360, 192), (8, 91, 180, 384)]
+DEPTH = [1, 2]
+
+parameters = "batch_size,zhw_dim,depth"
+parameter_combinations = list(itertools.product(BATCH_SIZES, ZHW_DIM, DEPTH))
+parameter_combinations[0] = pytest.param(*parameter_combinations[0], marks=pytest.mark.smoke)
+
+
+@pytest.mark.parametrize(parameters, parameter_combinations)
+@pytest.mark.parametrize("device", get_available_torch_devices())
+def test_earth_specific_layer_shapes(batch_size, device, zhw_dim, depth):
+    *zhw, dim = zhw_dim
     input_shape = (batch_size, int(np.prod(zhw)), dim)
     drop_path_ratios = [0.1 for _ in range(depth)]
 
@@ -23,10 +34,9 @@ def test_earth_specific_layer_shapes(batch_size, device, dim, zhw, depth):
     assert output.shape == input_shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
-@pytest.mark.parametrize("dim,zhw", [(192, (8, 181, 360)), (384, (8, 91, 180))])
-@pytest.mark.parametrize("depth", [1, 2])
-def test_earth_specific_layer_random_sample(batch_size, dim, zhw, depth, best_device):
+@pytest.mark.parametrize(parameters, parameter_combinations)
+def test_earth_specific_layer_random_sample(batch_size, zhw_dim, depth, best_device):
+    *zhw, dim = zhw_dim
     # Note: as for the earth attention, the results between our batched implementation and pangu-pytorch's sample-wise
     # implementation differ slightly for drop path > 0 and batch size > 1. This test thus only covers drop path = 0.
     drop_path_ratios = [0 for _ in range(depth)]

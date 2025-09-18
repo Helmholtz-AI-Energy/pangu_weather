@@ -7,15 +7,22 @@ from pangu_weather.layers import MLP
 import pangu_pytorch.models.layers as pangu_pytorch_layers
 from tests.conftest import get_available_torch_devices
 
+BATCH_SIZES = [1, 2, 4]
+DROPOUTS = [0.1, 0]
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+parameters = "batch_size,dropout"
+parameter_combinations = list(itertools.product(BATCH_SIZES, DROPOUTS))
+parameter_combinations[0] = pytest.param(*parameter_combinations[0], marks=pytest.mark.smoke)
+
+
+@pytest.mark.parametrize(parameters, parameter_combinations)
 @pytest.mark.parametrize("device", get_available_torch_devices())
-def test_downsample_shapes(batch_size, device):
+def test_mlp_shapes(batch_size, dropout, device):
     dim = 192
     input_shape = (batch_size, 131040, dim)
     expected_output_shape = (batch_size, 131040, dim)
 
-    mlp = MLP(dim, 0).to(device)
+    mlp = MLP(dim, dropout).to(device)
     x = torch.zeros(input_shape, device=device)
     with torch.no_grad():
         output = mlp(x)
@@ -23,8 +30,8 @@ def test_downsample_shapes(batch_size, device):
     assert output.shape == expected_output_shape
 
 
-@pytest.mark.parametrize("batch_size, dropout", itertools.product([1, 2, 4], [0, 0.1]))
-def test_downsample_random_sample(batch_size, dropout, best_device):
+@pytest.mark.parametrize(parameters, parameter_combinations)
+def test_mlp_random_sample(batch_size, dropout, best_device):
     dim = 192
     input_shape = (batch_size, 131040, dim)
     expected_output_shape = (batch_size, 131040, dim)

@@ -6,7 +6,7 @@ from pangu_pytorch.models.layers import PatchEmbedding_pretrain
 from tests.conftest import get_available_torch_devices
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 @pytest.mark.parametrize("device", get_available_torch_devices())
 def test_patch_embedding_shapes(batch_size, random_weather_statistics, random_constant_maps, random_const_h, device):
     patch_size = (2, 4, 4)
@@ -26,7 +26,7 @@ def test_patch_embedding_shapes(batch_size, random_weather_statistics, random_co
     assert embedded_input.shape == expected_shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 def test_patch_embedding_random_sample(batch_size, random_weather_statistics, random_constant_maps, random_const_h,
                                        best_device):
     patch_size = (2, 4, 4)

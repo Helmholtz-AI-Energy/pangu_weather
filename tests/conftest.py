@@ -52,10 +52,16 @@ def best_device():
     return get_best_device()
 
 
-def batch_size_device_product(all_device_batch_sizes=(1,), best_device_batch_sizes=(2, 4)):
-    all_device_pairs = list(itertools.product(all_device_batch_sizes, get_available_torch_devices()))
+def batch_size_device_product(all_device_batch_sizes=(1,), best_device_batch_sizes=(2, 4), smoke_test_batch_sizes=(1,)):
+    smoke_tests = []
+    if smoke_test_batch_sizes:
+        smoke_tests = [pytest.param(batch_size, get_best_device(), marks=pytest.mark.smoke)
+                       for batch_size in smoke_test_batch_sizes]
+    all_device_pairs = itertools.product(all_device_batch_sizes, get_available_torch_devices())
+    all_device_pairs = [(batch_size, device) for batch_size, device in all_device_pairs
+                        if batch_size not in smoke_test_batch_sizes and device != get_best_device()]
     best_device_pairs = [(batch_size, get_best_device()) for batch_size in best_device_batch_sizes]
-    return all_device_pairs + best_device_pairs
+    return smoke_tests + all_device_pairs + best_device_pairs
 
 
 pretrained_onnx_model_path = pathlib.Path(__file__).parent / 'test_data' / 'pangu_weather_24.onnx'

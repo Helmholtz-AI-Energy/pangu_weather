@@ -23,3 +23,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["pangu_pytorch"]
+markers = [
+    "smoke: fast tests for the basic functionality, select with '-m smoke'",
+    "slow: slow tests, deselect with '-m \"not slow\"'",
+]

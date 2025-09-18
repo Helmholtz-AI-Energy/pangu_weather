@@ -6,7 +6,7 @@ from pangu_pytorch.models.layers import PatchRecovery_pretrain
 from tests.conftest import get_available_torch_devices
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 @pytest.mark.parametrize("device", get_available_torch_devices())
 def test_patch_embedding_shapes(batch_size, device):
     patch_recovery = PatchRecovery().to(device)
@@ -17,7 +17,7 @@ def test_patch_embedding_shapes(batch_size, device):
     assert surface_data.shape == (batch_size, 4, 721, 1440)
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
 def test_patch_embedding_random_sample(batch_size, random_weather_statistics, random_constant_maps, random_const_h,
                                        best_device):
     torch.manual_seed(0)

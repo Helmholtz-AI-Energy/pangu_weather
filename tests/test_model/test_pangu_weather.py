@@ -6,7 +6,7 @@ import pangu_pytorch_model
 from tests.conftest import pretrained_onnx_model_path
 
 
-@pytest.mark.parametrize("batch_size", [1, 2][:1])
+@pytest.mark.parametrize("batch_size", [1, 2])
 def test_pangu_backbone_shapes(
         batch_size, best_device, random_weather_statistics, random_constant_maps, random_const_h):
     dim = 192
@@ -22,7 +22,7 @@ def test_pangu_backbone_shapes(
     assert output.shape == expected_output_shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2][:1])
+@pytest.mark.parametrize("batch_size", [1, pytest.param(2, marks=pytest.mark.smoke)])
 def test_pangu_weather_shapes(batch_size, best_device, random_weather_statistics, random_constant_maps, random_const_h):
     dim = 192
     surface_data = torch.zeros(batch_size, 4, 721, 1440, device=best_device)
@@ -36,7 +36,7 @@ def test_pangu_weather_shapes(batch_size, best_device, random_weather_statistics
     assert surface_output.shape == surface_data.shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [1, pytest.param(2, marks=pytest.mark.slow)])
 def test_pangu_backbone_random_sample(batch_size, best_device, random_weather_statistics, random_constant_maps,
                                       random_const_h):
     dim = 192
@@ -68,7 +68,8 @@ def test_pangu_backbone_random_sample(batch_size, best_device, random_weather_st
     assert output.allclose(output_pangu_pytorch, atol=1e-5 if batch_size > 1 else 1e-8)
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke),
+                                        pytest.param(2, marks=pytest.mark.slow)])
 def test_pangu_weather_random_sample(batch_size, best_device, random_weather_statistics, random_constant_maps,
                                      random_const_h):
     dim = 192
@@ -105,7 +106,8 @@ def test_pangu_weather_random_sample(batch_size, best_device, random_weather_sta
     assert upper_air_output.allclose(upper_air_output_pangu_pytorch, atol=1e-5 if batch_size > 1 else 1e-8)
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.slow),
+                                        pytest.param(2, marks=pytest.mark.slow)])
 @pytest.mark.skipif(condition=not pretrained_onnx_model_path.is_file(),
                     reason=f"Pretrained weights not found at {pretrained_onnx_model_path}")
 def test_pangu_weather_vs_onnx(batch_size, best_device, random_weather_statistics, random_constant_maps,

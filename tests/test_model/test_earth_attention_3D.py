@@ -1,15 +1,24 @@
+import itertools
+
 import pytest
 import torch
 
 from pangu_weather.layers import EarthAttention3D
 import pangu_pytorch.models.layers as pangu_pytorch_layers
-from tests.conftest import batch_size_device_product
+from tests.conftest import get_available_torch_devices
+
+BATCH_SIZES = [1, 2, 4]
+INPUT_SHAPES = [(30, 124, 144, 192), (15, 64, 144, 384)]
+MASKED = [True, False]
+
+parameters = "batch_size,input_shape,masked"
+parameter_combinations = list(itertools.product(BATCH_SIZES, INPUT_SHAPES, MASKED))
+parameter_combinations[0] = pytest.param(*parameter_combinations[0], marks=pytest.mark.smoke)
 
 
-@pytest.mark.parametrize("batch_size,device", batch_size_device_product())
-@pytest.mark.parametrize("input_shape", [(30, 124, 144, 192), (15, 64, 144, 384)])
-@pytest.mark.parametrize("masked", [False, True])
-def test_earth_attention_shapes(batch_size, device, input_shape, masked):
+@pytest.mark.parametrize(parameters, parameter_combinations)
+@pytest.mark.parametrize("device", get_available_torch_devices())
+def test_earth_attention_shapes(batch_size, input_shape, masked, device):
     expected_output_shape = (batch_size, *input_shape)
 
     x = torch.zeros(batch_size, *input_shape, device=device)
@@ -23,9 +32,7 @@ def test_earth_attention_shapes(batch_size, device, input_shape, masked):
     assert output.shape == expected_output_shape
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 4])
-@pytest.mark.parametrize("input_shape", [(30, 124, 144, 192), (15, 64, 144, 384)])
-@pytest.mark.parametrize("masked", [False, True])
+@pytest.mark.parametrize(parameters, parameter_combinations)
 def test_earth_attention_random_sample(batch_size, input_shape, masked, best_device):
     dim = input_shape[-1]
     expected_output_shape = (batch_size, *input_shape)
