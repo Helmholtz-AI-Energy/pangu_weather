@@ -24,6 +24,25 @@ def random_weather_statistics():
     return surface_mean, surface_std, upper_mean, upper_std
 
 
+aux_data = pathlib.Path(__file__).parent / 'data' / 'aux_data'
+
+
+@pytest.fixture
+def weather_statistics():
+    files = ["surface_mean.npy", "surface_std.npy", "upper_mean.npy", "upper_std.npy"]
+    return [torch.from_numpy(np.load(aux_data / file)).to(torch.float32) for file in files]
+
+
+@pytest.fixture
+def constant_maps():
+    return torch.from_numpy(np.load(aux_data / "constantMaks3.npy")).to(torch.float32)
+
+
+@pytest.fixture
+def const_h():
+    return torch.from_numpy(np.load(aux_data / "Constant_17_output_0.npy")).to(torch.float32)
+
+
 @pytest.fixture
 def random_constant_maps():
     generator = torch.Generator().manual_seed(0)
@@ -64,7 +83,8 @@ def batch_size_device_product(all_device_batch_sizes=(1,), best_device_batch_siz
     return smoke_tests + all_device_pairs + best_device_pairs
 
 
-pretrained_onnx_model_path = pathlib.Path(__file__).parent / 'test_data' / 'pangu_weather_24.onnx'
+pretrained_model_path_onnx = pathlib.Path(__file__).parent / 'data' / 'pangu_weather_24.onnx'
+pretrained_model_path_torch = pathlib.Path(__file__).parent / 'data' / 'pangu_weather_24_torch.pth'
 
 
 @pytest.fixture(scope='session')
@@ -80,7 +100,7 @@ def pretrained_onnx_model():
     providers = [cpu_provider]
 
     # Initialize onnxruntime session for Pangu-Weather Models
-    ort_session_24 = ort.InferenceSession(pretrained_onnx_model_path, sess_options=options, providers=providers)
+    ort_session_24 = ort.InferenceSession(pretrained_model_path_onnx, sess_options=options, providers=providers)
 
     def inference_with_onnx_model(input_upper, input_surface):
         # convert input to float32 numpy arrays, not clear if necessary
