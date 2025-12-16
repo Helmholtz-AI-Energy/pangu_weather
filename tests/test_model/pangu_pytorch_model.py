@@ -5,6 +5,7 @@ import torch
 
 
 import pangu_pytorch.models.layers as pangu_pytorch_layers
+from pangu_weather.pangu_weather import load_pangu_pretrained_weights
 
 
 class PanguWeatherBackbone(torch.nn.Module):
@@ -70,6 +71,9 @@ class PanguWeatherBackbone(torch.nn.Module):
         # skip connection -> (B, 521280, 2C)
         return torch.cat((skip, x), dim=-1)
 
+    def load_pretrained_weights(self, path, device='cpu'):
+        load_pangu_pretrained_weights(self, path, device, [], ['_output_layer'])
+
 
 class PanguWeather(torch.nn.Module):
     """Counterpart to pangu_finetuning.model.PanguWeather using pangu_pytorch layers for testing."""
@@ -78,6 +82,12 @@ class PanguWeather(torch.nn.Module):
         self.dimension = dimension
         self.backbone = PanguWeatherBackbone(weather_statistics, constant_maps, const_h, dimension, device=device)
         self._output_layer = pangu_pytorch_layers.PatchRecovery_pretrain(2 * self.dimension)
+
+    def load_pretrained_weights(self, path, device='cpu'):
+        expected_missing_modules = ['backbone']
+        expected_additional_modules = ['_input_layer', 'downsample', 'upsample', 'layers']
+        load_pangu_pretrained_weights(self, path, device, expected_missing_modules, expected_additional_modules)
+        self.backbone.load_pretrained_weights(path, device)
 
     def forward(self, upper_air_data, surface_data):
         # Pass through backbone: patch embedding, encoder, and decoder
