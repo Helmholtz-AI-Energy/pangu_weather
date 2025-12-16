@@ -3,7 +3,7 @@ import torch
 
 from pangu_weather.layers import DownSample, UpSample
 import pangu_pytorch.models.layers as pangu_pytorch_layers
-from tests.conftest import get_available_torch_devices
+from tests.utils import get_available_torch_devices
 
 
 @pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])

@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from pangu_weather.pangu_weather import get_onnx_constant_tensor
-from tests.conftest import pretrained_model_path_onnx
+from tests.utils import pretrained_model_path_onnx
 
 
 @pytest.fixture(scope='module')

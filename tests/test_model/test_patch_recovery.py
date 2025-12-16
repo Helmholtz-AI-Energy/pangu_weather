@@ -3,7 +3,7 @@ import torch
 
 from pangu_weather.layers import PatchRecovery
 from pangu_pytorch.models.layers import PatchRecovery_pretrain
-from tests.conftest import get_available_torch_devices
+from tests.utils import get_available_torch_devices
 
 
 @pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])

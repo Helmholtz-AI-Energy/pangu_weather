@@ -6,7 +6,7 @@ import torch
 
 from pangu_weather.layers import EarthSpecificLayer
 import pangu_pytorch.models.layers as pangu_pytorch_layers
-from tests.conftest import get_available_torch_devices
+from tests.utils import get_available_torch_devices
 
 
 BATCH_SIZES = [1, 2, 4]

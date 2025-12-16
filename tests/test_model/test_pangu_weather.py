@@ -3,7 +3,7 @@ import torch
 
 from pangu_weather.pangu_weather import PanguWeather, PanguWeatherBackbone
 import pangu_pytorch_model
-from tests.conftest import pretrained_onnx_model_path
+from tests.utils import pretrained_model_path_onnx, pretrained_model_path_torch
 
 
 @pytest.mark.parametrize("batch_size", [1, 2])
