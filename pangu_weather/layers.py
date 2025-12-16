@@ -41,18 +41,39 @@ class PatchEmbedding(torch.nn.Module):
         # passed as 4 tuple: (surface_mean, surface_std, upper_air_mean, upper_air_std)
         # constant_maps = most likely the land mask, soil type, and topography data
         # const_h = an auxiliary mask of shape (1, 1, 1, 13, 721, 1440), unclear what it contains
-        self.surface_mean, self.surface_std, self.upper_mean, self.upper_std = [
-            torch.nn.parameter.Buffer(tensor, persistent=False) for tensor in weather_statistics]
-        self.constant_maps = torch.nn.parameter.Buffer(constant_maps, persistent=False)
-        self.const_h = torch.nn.parameter.Buffer(const_h.squeeze(), persistent=False)
+        constant_buffers = self.prepare_constant_buffers(*weather_statistics, constant_maps, const_h)
+        self.surface_mean, self.surface_std, self.upper_mean, self.upper_std, self.constant_maps, self.const_h = [
+            torch.nn.parameter.Buffer(tensor, persistent=False) for tensor in constant_buffers]
+
+    @staticmethod
+    def _check_shape_and_reshape(tensor, shape):
+        if tensor.squeeze().shape != torch.Size([dim for dim in shape if dim != 1]):
+            raise ValueError(f'Tensor of shape {tensor.shape} does not match requested shape {shape}.')
+        return tensor.view(shape)
+
+    @staticmethod
+    def prepare_constant_buffers(surface_mean, surface_std, upper_mean, upper_std, constant_maps, const_h=None,
+                                 flip_pressure_levels=True):
+        if const_h is not None:
+            const_h = const_h.squeeze()
 
         # reshape and reorder weather statistics to expected shape
         # surface: reshape [4] to [1, 4, 1, 1] to match surface input [B, 4, 721, 1440]
-        self.surface_mean = self.surface_mean.view(1, 4, 1, 1)
-        self.surface_std = self.surface_std.view(1, 4, 1, 1)
+        surface_mean = PatchEmbedding._check_shape_and_reshape(surface_mean, (1, 4, 1, 1))
+        surface_std = PatchEmbedding._check_shape_and_reshape(surface_std, (1, 4, 1, 1))
+
         # upper air: flip pressure levels & reshape [13, 1, 1, 5] to [5, 13, 1, 1] to match input [B, 5, 13, 721, 1440]
-        self.upper_mean = self.upper_mean.flip(0).permute(3, 0, 1, 2)
-        self.upper_std = self.upper_std.flip(0).permute(3, 0, 1, 2)
+        upper_air_stats_shape = torch.Size([13, 1, 1, 5])
+        if not (upper_mean.shape == upper_air_stats_shape and upper_std.shape == upper_air_stats_shape):
+            raise ValueError(f"Unexpected shapes {upper_mean.shape=}, {upper_std.shape=}. "
+                             f"Expected both to be of shape {upper_air_stats_shape}")
+        if flip_pressure_levels:
+            upper_mean = upper_mean.flip(0)
+            upper_std = upper_std.flip(0)
+        upper_mean = upper_mean.permute(3, 0, 1, 2)
+        upper_std = upper_std.permute(3, 0, 1, 2)
+
+        return surface_mean, surface_std, upper_mean, upper_std, constant_maps, const_h
 
     def prepare_and_pad_surface_input(self, surface_data):
         """
