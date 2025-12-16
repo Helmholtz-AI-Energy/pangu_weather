@@ -1,6 +1,10 @@
 import logging
+import pathlib
+import re
 from collections import OrderedDict
 
+import onnx
+import pandas
 import torch
 import timm.layers
 
@@ -27,6 +31,77 @@ def load_pangu_pretrained_weights(model, path, device='cpu', expected_missing_mo
         logger.info(f'Unexpected missing keys: {unexpected_missing_keys}')
     if unexpected_additional_keys:
         logger.info(f'Unexpected missing keys: {unexpected_additional_keys}')
+
+
+def onnx_tensor_to_torch(onnx_tensor):
+    return torch.from_numpy(onnx.numpy_helper.to_array(onnx_tensor).copy())
+
+
+def get_onnx_constant_tensor(onnx_model, node_name):
+    node = [node for node in onnx_model.graph.node if node.name == node_name][0]
+    onnx_tensor = [attribute for attribute in node.attribute if attribute.name == 'value'][0].t
+    return onnx_tensor_to_torch(onnx_tensor)
+
+
+def load_pretrained_onnx_weights(pangu_weather_model, path_to_onnx_weights, onnx2torch_map_path=None):
+    # Read mapping between ONNX and torch parameter names from file
+    if onnx2torch_map_path is None:
+        onnx2torch_map_path = pathlib.Path(__file__).parent / 'onnx_to_torch_parameter_mapping.csv'
+    onnx2torch_parameter_df = pandas.read_csv(onnx2torch_map_path)
+    onnx2torch_parameter_map = dict(zip(onnx2torch_parameter_df.onnx_name, onnx2torch_parameter_df.torch_name))
+
+    # Load onnx file of pretrained pangu model
+    onnx_model = onnx.load(path_to_onnx_weights)
+
+    # maps torch parameter name -> pre-trained parameter
+    pretrained_parameters = {onnx2torch_parameter_map[initializer.name]: onnx_tensor_to_torch(initializer)
+                             for initializer in onnx_model.graph.initializer
+                             if initializer.name in onnx2torch_parameter_map}
+
+    # assign pre-trained ONNX parameters to pytorch parameters
+    for name, param in pangu_weather_model.named_parameters():
+        if name not in pretrained_parameters:
+            logger.warning(f'No pre-trained ONNX weight available for parameter {name}.')
+            continue
+
+        pre_trained_param = pretrained_parameters[name]
+        is_linear = bool(re.match(r'.*linear\d*.weight', name))
+        if is_linear:
+            assert len(pre_trained_param.shape) == 2
+            logger.debug(f'Transposing weight {name}.')
+            pre_trained_param = pre_trained_param.T
+
+        assert param.shape == pre_trained_param.shape
+        with torch.no_grad():
+            param.copy_(pre_trained_param)
+
+    # collect from ONNX and prepare constant map buffers (reshaping, flipping,...)
+    onnx_buffers = {torch_name: get_onnx_constant_tensor(onnx_model, onnx_name)
+                    for onnx_name, torch_name in onnx2torch_parameter_map.items() if onnx_name.startswith('/')}
+    buffer_names = [f"backbone._input_layer.{name}" for name in
+                    ["surface_mean", "surface_std", "upper_mean", "upper_std", "constant_maps", "const_h"]]
+    assert all(name in onnx_buffers for name in buffer_names)
+    prepared_buffers = pangu_weather_model.backbone._input_layer.prepare_constant_buffers(
+        *[onnx_buffers[name] for name in buffer_names])
+    for name, buffer in zip(buffer_names, prepared_buffers):
+        onnx_buffers[name] = buffer
+
+    # assign constant maps from ONNX to PatchEmbedding
+    for name, buffer in pangu_weather_model.named_buffers():
+        if name not in onnx_buffers:
+            logger.warning(f'No pre-trained ONNX weight available for parameter {name}.')
+            continue
+
+        if not buffer.shape == onnx_buffers[name].shape:
+            message = f"Mismatched shape for buffer {name}: got {onnx_buffers[name].shape} but expected {buffer.shape}."
+            if buffer.squeeze().shape == onnx_buffers[name].squeeze().shape:
+                logger.info(f'{message} Reshape by adding/removing singleton dimensions.')
+                onnx_buffers[name] = onnx_buffers[name].view_as(buffer)
+            else:
+                raise ValueError(f'{message}.')
+
+        with torch.no_grad():
+            buffer.copy_(onnx_buffers[name])
 
 
 class PanguWeatherBackbone(torch.nn.Module):
@@ -128,6 +203,10 @@ class PanguWeather(torch.nn.Module):
         expected_additional_modules = ['_input_layer', 'downsample', 'upsample', 'layers']
         load_pangu_pretrained_weights(self, path, device, expected_missing_modules, expected_additional_modules)
         self.backbone.load_pretrained_weights(path, device)
+
+    def load_pretrained_onnx_weights(self, path):
+        logger.info(f'Loading pretrained Pangu-Weather weights from {path}.')
+        load_pretrained_onnx_weights(self, path)
 
     def forward(self, upper_air_data, surface_data):
         # Pass through backbone: patch embedding, encoder, and decoder
