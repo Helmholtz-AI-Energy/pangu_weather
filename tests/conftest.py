@@ -1,11 +1,10 @@
 import os
 
 import numpy as np
-import onnxruntime as ort
 import pytest
 import torch
 
-from tests.utils import aux_data_path, pretrained_model_path_onnx, get_best_device
+from tests.utils import *
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -25,19 +24,24 @@ def random_weather_statistics():
 
 
 @pytest.fixture
+def example_input():
+    return load_example_input()
+
+
+@pytest.fixture
 def weather_statistics():
     files = ["surface_mean.npy", "surface_std.npy", "upper_mean.npy", "upper_std.npy"]
-    return [torch.from_numpy(np.load(aux_data_path / file)).to(torch.float32) for file in files]
+    return [load_tensor_from_npy(aux_data_path / file) for file in files]
 
 
 @pytest.fixture
 def constant_maps():
-    return torch.from_numpy(np.load(aux_data_path / "constantMaks3.npy")).to(torch.float32)
+    return load_tensor_from_npy(aux_data_path / "constantMaks3.npy")
 
 
 @pytest.fixture
 def const_h():
-    return torch.from_numpy(np.load(aux_data_path / "Constant_17_output_0.npy")).to(torch.float32)
+    return load_tensor_from_npy(aux_data_path / "Constant_17_output_0.npy")
 
 
 @pytest.fixture
@@ -59,26 +63,12 @@ def best_device():
 
 @pytest.fixture(scope='session')
 def pretrained_onnx_model():
-    # Setup ONNX runtime as in official repository
-    options = ort.SessionOptions()
-    options.enable_cpu_mem_arena = False
-    options.enable_mem_pattern = False
-    options.enable_mem_reuse = False
-    options.intra_op_num_threads = 1
-    cuda_provider = ('CUDAExecutionProvider', {'arena_extend_strategy': 'kSameAsRequested'})
-    cpu_provider = 'CPUExecutionProvider'
-    providers = [cpu_provider]
+    ort_session_24 = setup_onnxruntime_session(pretrained_model_path_onnx)
+    return onnx_inference_model(ort_session_24)
 
-    # Initialize onnxruntime session for Pangu-Weather Models
-    ort_session_24 = ort.InferenceSession(pretrained_model_path_onnx, sess_options=options, providers=providers)
 
-    def inference_with_onnx_model(input_upper, input_surface):
-        # convert input to float32 numpy arrays, not clear if necessary
-        input_upper = np.asarray(input_upper, dtype=np.float32)
-        input_surface = np.asarray(input_surface, dtype=np.float32)
-
-        # inference via ONNX runtime
-        output_upper, output_surface = ort_session_24.run(None, {'input': input_upper, 'input_surface': input_surface})
-        return torch.tensor(output_upper), torch.tensor(output_surface)
-
-    return inference_with_onnx_model
+@pytest.fixture(scope='session')
+def onnx_output_for_example_input():
+    ort_session_24 = setup_onnxruntime_session(pretrained_model_path_onnx)
+    onnx_model = onnx_inference_model(ort_session_24)
+    return onnx_model(*load_example_input())
