@@ -386,7 +386,8 @@ class EarthSpecificLayer(torch.nn.Module):
     def forward(self, x):
         if self.training and self.checkpoint:
             for block in self.blocks:
-                x = torch.utils.checkpoint.checkpoint(block, x)
+                # TODO: check if we really need use_reentrant, see https://docs.pytorch.org/docs/stable/checkpoint.html
+                x = torch.utils.checkpoint.checkpoint(block, x, use_reentrant=True)
         else:
             x = self.blocks(x)
         return x

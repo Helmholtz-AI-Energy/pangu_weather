@@ -19,7 +19,7 @@ def test_pangu_backbone_shapes(
     expected_output_shape = (batch_size, 521280, 2 * dim)
 
     backbone = PanguWeatherBackbone(
-        random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device)
+        random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device).eval()
     with torch.no_grad():
         output = backbone(upper_air_data, surface_data)
 
@@ -32,7 +32,8 @@ def test_pangu_weather_shapes(batch_size, best_device, random_weather_statistics
     surface_data = torch.zeros(batch_size, 4, 721, 1440, device=best_device)
     upper_air_data = torch.zeros(batch_size, 5, 13, 721, 1440, device=best_device)
 
-    pangu_weather = PanguWeather(random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device)
+    pangu_weather = PanguWeather(
+        random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device).eval()
     with torch.no_grad():
         upper_air_output, surface_output = pangu_weather(upper_air_data, surface_data)
 
@@ -49,8 +50,8 @@ def test_pangu_backbone_random_sample(batch_size, best_device, random_weather_st
     expected_output_shape = (batch_size, 521280, 2 * dim)
 
     torch.manual_seed(0)
-    backbone = PanguWeatherBackbone(random_weather_statistics, random_constant_maps, random_const_h, dim)
-    backbone.to(best_device)
+    backbone = PanguWeatherBackbone(
+        random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device).eval()
     with torch.no_grad():
         output = backbone(upper_air_data, surface_data)
 
@@ -80,7 +81,8 @@ def test_pangu_weather_random_sample(batch_size, best_device, random_weather_sta
     upper_air_data = torch.randn(batch_size, 5, 13, 721, 1440, device=best_device)
 
     torch.manual_seed(0)
-    pangu_weather = PanguWeather(random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device)
+    pangu_weather = PanguWeather(
+        random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device).eval()
     with torch.no_grad():
         upper_air_output, surface_output = pangu_weather(upper_air_data, surface_data)
 
@@ -122,7 +124,7 @@ def test_pangu_weather_load_pretrained(batch_size, best_device, weather_statisti
 
     # our model using either pangu-pytorch (pp) or onnx pre-trained weights
     logger.info('Loading PanguWeather with Pangu-Pytorch weights.')
-    pangu_weather__pp_weights = PanguWeather(weather_statistics, constant_maps, const_h, dim).to(best_device)
+    pangu_weather__pp_weights = PanguWeather(weather_statistics, constant_maps, const_h, dim).to(best_device).eval()
     pangu_weather__pp_weights.load_pretrained_weights(pretrained_model_path_torch, best_device)
     logger.info('Forward pass with PanguWeather with Pangu-Pytorch weights.')
     with torch.no_grad():
@@ -130,7 +132,7 @@ def test_pangu_weather_load_pretrained(batch_size, best_device, weather_statisti
             upper_air_data, surface_data)
 
     logger.info('Loading PanguWeather with official ONNX weights.')
-    pangu_weather__onnx_weights = PanguWeather(weather_statistics, constant_maps, const_h, dim).to(best_device)
+    pangu_weather__onnx_weights = PanguWeather(weather_statistics, constant_maps, const_h, dim).to(best_device).eval()
     pangu_weather__onnx_weights.load_pretrained_onnx_weights(pretrained_model_path_onnx)
     logger.info('Forward pass with PanguWeather with official ONNX weights.')
     with torch.no_grad():
@@ -202,7 +204,7 @@ def test_pangu_weather_vs_onnx_on_example_input(batch_size, best_device, weather
 
     logger.info('Loading PanguWeather with official ONNX weights.')
     dim = 192
-    pangu_weather = PanguWeather(weather_statistics, constant_maps, const_h, dim).to(best_device)
+    pangu_weather = PanguWeather(weather_statistics, constant_maps, const_h, dim).to(best_device).eval()
     pangu_weather.load_pretrained_onnx_weights(pretrained_model_path_onnx)
     logger.info('Forward pass with PanguWeather with official ONNX weights.')
     with torch.no_grad():

@@ -28,7 +28,7 @@ def test_earth_specific_layer_shapes(batch_size, device, zhw_dim, depth):
 
     x = torch.zeros(input_shape, device=device)
 
-    earth_specific_layer = EarthSpecificLayer(depth, dim, drop_path_ratios, 6, zhw).to(device)
+    earth_specific_layer = EarthSpecificLayer(depth, dim, drop_path_ratios, 6, zhw).to(device).eval()
     with torch.no_grad():
         output = earth_specific_layer(x)
 
@@ -44,7 +44,8 @@ def test_earth_specific_layer_random_sample(batch_size, zhw_dim, depth, best_dev
     input_shape = (batch_size, int(np.prod(zhw)), dim)
 
     torch.manual_seed(0)
-    earth_specific_layer = EarthSpecificLayer(depth, dim, drop_path_ratios, 6, zhw, reproduce_mask=True).to(best_device)
+    earth_specific_layer = EarthSpecificLayer(depth, dim, drop_path_ratios, 6, zhw, reproduce_mask=True)
+    earth_specific_layer.to(best_device).eval()
     torch.manual_seed(0)
     # to use the same initialization of the earth-specific biases: create on cpu first, then move to device
     with warnings.catch_warnings():
