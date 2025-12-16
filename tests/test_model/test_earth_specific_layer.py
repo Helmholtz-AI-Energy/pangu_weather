@@ -1,11 +1,12 @@
 import itertools
+import warnings
 
 import numpy as np
 import pytest
 import torch
 
 from pangu_weather.layers import EarthSpecificLayer
-import pangu_pytorch.models.layers as pangu_pytorch_layers
+from tests.test_model.pangu_pytorch_model import pangu_pytorch_layers
 from tests.utils import get_available_torch_devices
 
 
@@ -46,8 +47,10 @@ def test_earth_specific_layer_random_sample(batch_size, zhw_dim, depth, best_dev
     earth_specific_layer = EarthSpecificLayer(depth, dim, drop_path_ratios, 6, zhw, reproduce_mask=True).to(best_device)
     torch.manual_seed(0)
     # to use the same initialization of the earth-specific biases: create on cpu first, then move to device
-    earth_specific_layer_pangu_pytorch = pangu_pytorch_layers.EarthSpecificLayer(
-        depth, dim, drop_path_ratios, 6, False, 'cpu').to(best_device)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        earth_specific_layer_pangu_pytorch = pangu_pytorch_layers.EarthSpecificLayer(
+            depth, dim, drop_path_ratios, 6, False, 'cpu').to(best_device)
     earth_specific_layer_pangu_pytorch.apply(lambda module: setattr(module, 'device', best_device))
 
     x = torch.randn(input_shape, device=best_device)

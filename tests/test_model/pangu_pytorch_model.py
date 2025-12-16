@@ -1,10 +1,12 @@
+import warnings
 from collections import OrderedDict
 
 import timm.layers
 import torch
 
-
-import pangu_pytorch.models.layers as pangu_pytorch_layers
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    import tests.test_model.pangu_pytorch.models.layers as pangu_pytorch_layers
 from pangu_weather.pangu_weather import load_pangu_pretrained_weights
 
 
@@ -27,13 +29,15 @@ class PanguWeatherBackbone(torch.nn.Module):
         drop_path_rate = (torch.linspace(0, 0.2, 16) if drop_path else torch.zeros(16)).tolist()
 
         # Four earth-specific layers
-        layer_kwargs = {'use_checkpoint': self.training, 'device': device}
-        layers = [
-            pangu_pytorch_layers.EarthSpecificLayer(2, self.dimension, drop_path_rate[0:2], 6, **layer_kwargs),
-            pangu_pytorch_layers.EarthSpecificLayer(6, 2 * self.dimension, drop_path_rate[2:8], 12, **layer_kwargs),
-            pangu_pytorch_layers.EarthSpecificLayer(6, 2 * self.dimension, drop_path_rate[8:14], 12, **layer_kwargs),
-            pangu_pytorch_layers.EarthSpecificLayer(2, self.dimension, drop_path_rate[14:], 6, **layer_kwargs),
-        ]
+        with warnings.catch_warnings():
+            kwargs = {'use_checkpoint': self.training, 'device': device}
+            warnings.filterwarnings("ignore", category=UserWarning)
+            layers = [
+                pangu_pytorch_layers.EarthSpecificLayer(2, self.dimension, drop_path_rate[0:2], 6, **kwargs),
+                pangu_pytorch_layers.EarthSpecificLayer(6, 2 * self.dimension, drop_path_rate[2:8], 12, **kwargs),
+                pangu_pytorch_layers.EarthSpecificLayer(6, 2 * self.dimension, drop_path_rate[8:14], 12, **kwargs),
+                pangu_pytorch_layers.EarthSpecificLayer(2, self.dimension, drop_path_rate[14:], 6, **kwargs),
+            ]
         self.layers = torch.nn.Sequential(
             OrderedDict([(f'EarthSpecificLayer{i}', layer) for i, layer in enumerate(layers)]))
 
@@ -58,15 +62,17 @@ class PanguWeatherBackbone(torch.nn.Module):
                               self.constant_maps.to(device), self.const_h.to(device))
 
         # encoder
-        x = self.layers[0](x, 8, 181, 360)  # output shape (B, 521280, C), C = self.dimension
-        skip = x  # remember for skip connection
-        x = self.downsample(x, 8, 181, 360)  # (8, 360, 181) -> (8, 180, 91)
-        x = self.layers[1](x, 8, 91, 180)  # output shape (B, 131040, 2C), C = self.dimension
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            x = self.layers[0](x, 8, 181, 360)  # output shape (B, 521280, C), C = self.dimension
+            skip = x  # remember for skip connection
+            x = self.downsample(x, 8, 181, 360)  # (8, 360, 181) -> (8, 180, 91)
+            x = self.layers[1](x, 8, 91, 180)  # output shape (B, 131040, 2C), C = self.dimension
 
-        # decoder
-        x = self.layers[2](x, 8, 91, 180)  # output shape (B, 131040, 2C), C = self.dimension
-        x = self.upsample(x)  # (8, 180, 91) -> (8, 360, 181)
-        x = self.layers[3](x, 8, 181, 360)  # output shape (B, 521280, C), C = self.dimension
+            # decoder
+            x = self.layers[2](x, 8, 91, 180)  # output shape (B, 131040, 2C), C = self.dimension
+            x = self.upsample(x)  # (8, 180, 91) -> (8, 360, 181)
+            x = self.layers[3](x, 8, 181, 360)  # output shape (B, 521280, C), C = self.dimension
 
         # skip connection -> (B, 521280, 2C)
         return torch.cat((skip, x), dim=-1)

@@ -1,11 +1,12 @@
 import itertools
+import warnings
 
 import numpy as np
 import pytest
 import torch
 
 from pangu_weather.layers import EarthSpecificBlock
-import pangu_pytorch.models.layers as pangu_pytorch_layers
+from tests.test_model.pangu_pytorch_model import pangu_pytorch_layers
 from tests.utils import get_available_torch_devices
 
 BATCH_SIZES = [1, 2, 4]
@@ -52,8 +53,10 @@ def test_earth_specific_block_random_sample(batch_size, zhw_dim, roll, drop_path
         dim, drop_path_ratio, roll, zhw, reproduce_mask=True).to(best_device)
     torch.manual_seed(0)
     # to use the same initialization of the earth-specific bias: create on cpu first, then move to device
-    earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(
-        dim, drop_path_ratio, 6, 'cpu').to(best_device)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(
+            dim, drop_path_ratio, 6, 'cpu').to(best_device)
     earth_specific_block_pangu_pytorch.device = best_device
 
     x = torch.randn(input_shape, device=best_device)
@@ -83,7 +86,9 @@ def test_earth_specific_block_mask(batch_size, shape, reproduce_mask):
 
     drop_path_ratio = 0
     earth_specific_block = EarthSpecificBlock(dim, drop_path_ratio, True, zhw, reproduce_mask=reproduce_mask)
-    earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(dim, drop_path_ratio, 6, 'cpu')
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(dim, drop_path_ratio, 6, 'cpu')
 
     mask = earth_specific_block.generate_attention_mask()
     mask_pangu_pytorch = earth_specific_block_pangu_pytorch.gen_mask(torch.zeros(input_shape))

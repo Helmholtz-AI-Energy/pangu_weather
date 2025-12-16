@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from pangu_weather.layers import DownSample, UpSample
-import pangu_pytorch.models.layers as pangu_pytorch_layers
+from tests.test_model.pangu_pytorch_model import pangu_pytorch_layers
 from tests.utils import get_available_torch_devices
 
 

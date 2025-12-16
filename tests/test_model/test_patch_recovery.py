@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from pangu_weather.layers import PatchRecovery
-from pangu_pytorch.models.layers import PatchRecovery_pretrain
+from tests.test_model.pangu_pytorch_model import pangu_pytorch_layers
 from tests.utils import get_available_torch_devices
 
 
@@ -24,7 +24,7 @@ def test_patch_embedding_random_sample(batch_size, random_weather_statistics, ra
     patch_recovery = PatchRecovery().to(best_device)
 
     torch.manual_seed(0)
-    patch_recovery_pangu_pytorch = PatchRecovery_pretrain(dim=384).to(best_device)
+    patch_recovery_pangu_pytorch = pangu_pytorch_layers.PatchRecovery_pretrain(dim=384).to(best_device)
 
     patches = torch.zeros(batch_size, 521280, 384, device=best_device)
 

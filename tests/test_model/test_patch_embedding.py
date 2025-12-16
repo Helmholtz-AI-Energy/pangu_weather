@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from pangu_weather.layers import PatchEmbeddingConv1d, PatchEmbeddingConv3d2d
-from pangu_pytorch.models.layers import PatchEmbedding_pretrain
+from tests.test_model.pangu_pytorch_model import pangu_pytorch_layers
 from tests.utils import get_available_torch_devices
 
 
@@ -41,7 +41,7 @@ def test_patch_embedding_random_sample(batch_size, random_weather_statistics, ra
         patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device)
 
     torch.manual_seed(0)
-    patch_embedding_pangu_pytorch = PatchEmbedding_pretrain(patch_size, dim).to(best_device)
+    patch_embedding_pangu_pytorch = pangu_pytorch_layers.PatchEmbedding_pretrain(patch_size, dim).to(best_device)
 
     surface_data = torch.randn(batch_size, 4, 721, 1440, device=best_device)
     upper_air_data = torch.randn(batch_size, 5, 13, 721, 1440, device=best_device)
