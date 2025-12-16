@@ -19,6 +19,7 @@ license-files = ["LICENSE"]
 
 [project.optional-dependencies]
 dev = [
+    "coverage",
     "pytest",
     "onnxruntime"
 ]
@@ -33,3 +34,7 @@ markers = [
 log_cli = true
 log_cli_format = "[%(asctime)s][%(levelname)s][%(name)s:%(lineno)d] - %(message)s"
 log_cli_level = "INFO"
+
+
+[tool.coverage.run]
+source = ['pangu_weather']
