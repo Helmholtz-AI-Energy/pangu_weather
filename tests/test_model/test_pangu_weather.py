@@ -10,7 +10,7 @@ from tests.utils import pretrained_model_path_onnx, pretrained_model_path_torch,
 logger = logging.getLogger('pangu_weather.' + __name__)
 
 
-@pytest.mark.parametrize("batch_size", [1, 2])
+@pytest.mark.parametrize("batch_size", [1, pytest.param(2, marks=pytest.mark.slow)])
 def test_pangu_backbone_shapes(
         batch_size, best_device, random_weather_statistics, random_constant_maps, random_const_h):
     dim = 192
@@ -111,7 +111,8 @@ def test_pangu_weather_random_sample(batch_size, best_device, random_weather_sta
     assert upper_air_output.allclose(upper_air_output_pangu_pytorch, atol=1e-5 if batch_size > 1 else 1e-8)
 
 
-@pytest.mark.parametrize("batch_size", [1, pytest.param(2, marks=pytest.mark.slow)])
+@pytest.mark.parametrize("batch_size", [pytest.param(2, marks=pytest.mark.smoke),
+                                        pytest.param(2, marks=pytest.mark.slow)])
 @pytest.mark.skipif(condition=not pretrained_model_path_onnx.is_file(),
                     reason=f"Pretrained weights not found at {pretrained_model_path_onnx}")
 @pytest.mark.skipif(condition=not pretrained_model_path_torch.is_file(),
@@ -181,7 +182,7 @@ def test_pangu_weather_load_pretrained(batch_size, best_device, weather_statisti
     assert upper_air_output__onnx_weights.allclose(upper_air_output_pangu_pytorch, atol=atol)
 
 
-@pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke),
+@pytest.mark.parametrize("batch_size", [pytest.param(1),
                                         pytest.param(2, marks=pytest.mark.slow)])
 @pytest.mark.skipif(condition=not pretrained_model_path_onnx.is_file(),
                     reason=f"Pretrained weights not found at {pretrained_model_path_onnx}")
@@ -190,7 +191,7 @@ def test_pangu_weather_vs_onnx_on_example_input(batch_size, best_device, weather
     upper_air_data, surface_data = [batched_repeat(x, batch_size) for x in example_input]
     upper_air_output_onnx, surface_output_onnx = [batched_repeat(x, batch_size) for x in onnx_output_for_example_input]
 
-    logger.info('Weather statistics.')
+    logger.info('Prepare weather statistics.')
     # prepare weather statistics for (de)normalization
     surface_mean, surface_std, upper_mean, upper_std = weather_statistics
     surface_mean, surface_std = surface_mean.view((1, 4, 1, 1)), surface_std.view((1, 4, 1, 1))
