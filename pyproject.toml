@@ -30,3 +30,6 @@ markers = [
     "smoke: fast tests for the basic functionality, select with '-m smoke'",
     "slow: slow tests, deselect with '-m \"not slow\"'",
 ]
+log_cli = true
+log_cli_format = "[%(asctime)s][%(levelname)s][%(name)s:%(lineno)d] - %(message)s"
+log_cli_level = "INFO"
