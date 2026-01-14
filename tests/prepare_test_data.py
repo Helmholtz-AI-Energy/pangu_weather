@@ -1,3 +1,4 @@
+import argparse
 import collections
 import logging
 
@@ -13,6 +14,7 @@ logger = logging.getLogger('pangu_weather.' + __name__)
 
 
 def extract_auxiliary_data_from_onnx(onnx_path, overwrite=False):
+    logger.info(f'Extracting auxiliary data from ONNX weights.')
     logger.info(f'Loading ONNX model from {onnx_path}.')
     onnx_model = onnx.load(onnx_path)
 
@@ -45,6 +47,7 @@ def extract_auxiliary_data_from_onnx(onnx_path, overwrite=False):
 
 
 def convert_onnx_to_torch_checkpoint(onnx_path, torch_output_path, overwrite=False, device='cpu'):
+    logger.info(f'Converting ONNX weights to torch checkpoint.')
     dim = 192
     generator = torch.Generator().manual_seed(0)
     const_h = torch.randn((1, 1, 1, 13, 721, 1440), generator=generator)
@@ -81,10 +84,8 @@ def convert_onnx_to_torch_checkpoint(onnx_path, torch_output_path, overwrite=Fal
     torch.save(checkpoint, torch_output_path)
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format="[%(asctime)s][%(levelname)s][%(name)s:%(lineno)d] - %(message)s")
-    download = True
-
+def download_onnx_weights_and_example_input(overwrite=False):
+    logger.info(f'Downloading ONNX weights and example input from official pangu-weather repository.')
     # url to the pre-trained weights of the 24h pangu weather model and the example inputs
     # from the official pangu weather repository (github.com/198808xc/Pangu-Weather)
     gdrive_urls = {
@@ -97,15 +98,38 @@ if __name__ == '__main__':
     }
     example_input_path.mkdir(parents=True, exist_ok=True)
 
-    if download:
-        for path, url in gdrive_urls.items():
+    for path, url in gdrive_urls.items():
+        if overwrite or not path.exists():
             logger.info(f'{path.name} not found, from {url}.')
             gdown.download(url, str(path), fuzzy=True)
+    else:
+        logger.info(f'Done, all files already downloaded.')
 
-    if not pretrained_model_path_onnx.exists():
-        raise FileNotFoundError(
-            f'ONNX model file not found at {pretrained_model_path_onnx} and {download=}. Please download manually.')
 
-    aux_data_path.mkdir(exist_ok=True, parents=True)
-    extract_auxiliary_data_from_onnx(pretrained_model_path_onnx)
-    convert_onnx_to_torch_checkpoint(pretrained_model_path_onnx, pretrained_model_path_torch)
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format="[%(asctime)s][%(levelname)s][%(name)s:%(lineno)d] - %(message)s")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--download', action='store_true',
+                        help='Download missing data (onnx weights and example inputs)')
+    parser.add_argument('--extract_aux_data', action='store_true',
+                        help='Extract auxiliary data from ONNX weights.')
+    parser.add_argument('--to_torch', action='store_true',
+                        help='Convert ONNX weights to torch checkpoint.')
+    parser.add_argument('--overwrite', action='store_true',
+                        help='Overwrite existing files.')
+    cli_args = parser.parse_args()
+
+    if cli_args.download:
+        download_onnx_weights_and_example_input(overwrite=cli_args.overwrite)
+
+    if (cli_args.extract_aux_data or cli_args.to_torch) and not pretrained_model_path_onnx.exists():
+        raise FileNotFoundError(f'ONNX model file not found at {pretrained_model_path_onnx}.')
+
+    if cli_args.extract_aux_data:
+        aux_data_path.mkdir(exist_ok=True, parents=True)
+        extract_auxiliary_data_from_onnx(pretrained_model_path_onnx, overwrite=cli_args.overwrite)
+
+    if cli_args.to_torch:
+        convert_onnx_to_torch_checkpoint(pretrained_model_path_onnx, pretrained_model_path_torch,
+                                         overwrite=cli_args.overwrite)
