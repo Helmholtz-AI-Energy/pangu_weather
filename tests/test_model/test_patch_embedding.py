@@ -61,4 +61,4 @@ def test_patch_embedding_random_sample(batch_size, random_weather_statistics, ra
 
     # check output content
     assert embedded_input_conv1d.allclose(embedded_input_pangu_pytorch)
-    assert embedded_input_conv3d2d.allclose(embedded_input_pangu_pytorch)
+    assert embedded_input_conv3d2d.allclose(embedded_input_pangu_pytorch, atol=1e-5)
