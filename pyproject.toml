@@ -22,7 +22,10 @@ dev = [
     "coverage",
     "pytest",
     "onnxruntime",
-    "gdown"
+    "gdown",
+    "pre-commit",
+    "ruff",
+    "mypy",
 ]
 
 [tool.pytest.ini_options]
@@ -39,3 +42,18 @@ log_cli_level = "INFO"
 
 [tool.coverage.run]
 source = ['pangu_weather']
+
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+# allow reformatting to single line even if line ends with comma
+skip-magic-trailing-comma = true
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.11"
+modules = ["pangu_weather"]
+exclude = ['tests/']
+ignore_missing_imports = true
