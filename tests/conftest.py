@@ -3,7 +3,7 @@ import os
 import pytest
 import torch
 
-from tests.utils import *
+import tests.utils
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -24,23 +24,35 @@ def random_weather_statistics():
 
 @pytest.fixture
 def example_input():
-    return load_example_input()
+    try:
+        return tests.utils.load_example_input()
+    except FileNotFoundError as e:
+        pytest.skip(f"Missing example input file: {e}")
 
 
 @pytest.fixture
 def weather_statistics():
-    files = ["surface_mean.npy", "surface_std.npy", "upper_mean.npy", "upper_std.npy"]
-    return [load_tensor_from_npy(aux_data_path / file) for file in files]
+    file_names = ["surface_mean.npy", "surface_std.npy", "upper_mean.npy", "upper_std.npy"]
+    paths = [tests.utils.aux_data_path / file for file in file_names]
+    if missing_paths := [path for path in paths if not path.exists()]:
+        pytest.skip(f'Missing weather statistic files: {missing_paths}.')
+    return [tests.utils.load_tensor_from_npy(path) for path in paths]
 
 
 @pytest.fixture
 def constant_maps():
-    return load_tensor_from_npy(aux_data_path / "constantMaks3.npy")
+    path = tests.utils.aux_data_path / "constantMaks3.npy"
+    if not path.exists():
+        pytest.skip(f'Missing constant map file: {path}.')
+    return tests.utils.load_tensor_from_npy(path)
 
 
 @pytest.fixture
 def const_h():
-    return load_tensor_from_npy(aux_data_path / "Constant_17_output_0.npy")
+    path = tests.utils.aux_data_path / "Constant_17_output_0.npy"
+    if not path.exists():
+        pytest.skip(f'Missing const_h file: {path}.')
+    return tests.utils.load_tensor_from_npy(path)
 
 
 @pytest.fixture
@@ -57,17 +69,33 @@ def random_const_h():
 
 @pytest.fixture
 def best_device():
-    return get_best_device()
+    return tests.utils.get_best_device()
 
 
 @pytest.fixture(scope='session')
-def pretrained_onnx_model():
-    ort_session_24 = setup_onnxruntime_session(pretrained_model_path_onnx)
-    return onnx_inference_model(ort_session_24)
+def pretrained_model_path_onnx():
+    path = tests.utils.pretrained_model_path_onnx
+    if not path.exists():
+        pytest.skip(f'Missing ONNX model file: {path}.')
+    return path
 
 
 @pytest.fixture(scope='session')
-def onnx_output_for_example_input():
-    ort_session_24 = setup_onnxruntime_session(pretrained_model_path_onnx)
-    onnx_model = onnx_inference_model(ort_session_24)
-    return onnx_model(*load_example_input())
+def pretrained_model_path_torch():
+    path = tests.utils.pretrained_model_path_torch
+    if not path.exists():
+        pytest.skip(f'Missing PyTorch model file: {path}.')
+    return path
+
+
+@pytest.fixture(scope='session')
+def pretrained_onnx_model(pretrained_model_path_onnx):
+    ort_session_24 = tests.utils.setup_onnxruntime_session(pretrained_model_path_onnx)
+    return tests.utils.onnx_inference_model(ort_session_24)
+
+
+@pytest.fixture(scope='session')
+def onnx_output_for_example_input(pretrained_model_path_onnx):
+    ort_session_24 = tests.utils.setup_onnxruntime_session(pretrained_model_path_onnx)
+    onnx_model = tests.utils.onnx_inference_model(ort_session_24)
+    return onnx_model(*tests.utils.load_example_input())

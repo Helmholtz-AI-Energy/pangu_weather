@@ -5,7 +5,7 @@ import torch
 
 from pangu_weather.pangu_weather import PanguWeather, PanguWeatherBackbone
 import pangu_pytorch_model
-from tests.utils import pretrained_model_path_onnx, pretrained_model_path_torch, batched_repeat
+from tests.utils import batched_repeat
 
 logger = logging.getLogger('pangu_weather.' + __name__)
 
@@ -113,11 +113,8 @@ def test_pangu_weather_random_sample(batch_size, best_device, random_weather_sta
 
 @pytest.mark.parametrize("batch_size", [pytest.param(2, marks=pytest.mark.smoke),
                                         pytest.param(2, marks=pytest.mark.slow)])
-@pytest.mark.skipif(condition=not pretrained_model_path_onnx.is_file(),
-                    reason=f"Pretrained weights not found at {pretrained_model_path_onnx}")
-@pytest.mark.skipif(condition=not pretrained_model_path_torch.is_file(),
-                    reason=f"Pretrained weights not found at {pretrained_model_path_torch}")
-def test_pangu_weather_load_pretrained(batch_size, best_device, weather_statistics, constant_maps, const_h):
+def test_pangu_weather_load_pretrained(batch_size, best_device, pretrained_model_path_onnx, pretrained_model_path_torch,
+                                       weather_statistics, constant_maps, const_h):
     logger.info('Preparing input and auxiliary data.')
     dim = 192
     surface_data = torch.randn(batch_size, 4, 721, 1440, device=best_device)
@@ -184,10 +181,8 @@ def test_pangu_weather_load_pretrained(batch_size, best_device, weather_statisti
 
 @pytest.mark.parametrize("batch_size", [pytest.param(1),
                                         pytest.param(2, marks=pytest.mark.slow)])
-@pytest.mark.skipif(condition=not pretrained_model_path_onnx.is_file(),
-                    reason=f"Pretrained weights not found at {pretrained_model_path_onnx}")
-def test_pangu_weather_vs_onnx_on_example_input(batch_size, best_device, weather_statistics, constant_maps, const_h,
-                                                example_input, onnx_output_for_example_input):
+def test_pangu_weather_vs_onnx_on_example_input(batch_size, best_device, pretrained_model_path_onnx, weather_statistics,
+                                                constant_maps, const_h, example_input, onnx_output_for_example_input):
     upper_air_data, surface_data = [batched_repeat(x, batch_size) for x in example_input]
     upper_air_output_onnx, surface_output_onnx = [batched_repeat(x, batch_size) for x in onnx_output_for_example_input]
 

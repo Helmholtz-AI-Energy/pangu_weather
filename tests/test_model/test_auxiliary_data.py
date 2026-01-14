@@ -1,15 +1,12 @@
-import logging
-
 import onnx
 import pytest
 import torch
 
 from pangu_weather.pangu_weather import get_onnx_constant_tensor
-from tests.utils import pretrained_model_path_onnx
 
 
 @pytest.fixture(scope='module')
-def onnx_model():
+def onnx_model(pretrained_model_path_onnx):
     return onnx.load(pretrained_model_path_onnx)
 
 
