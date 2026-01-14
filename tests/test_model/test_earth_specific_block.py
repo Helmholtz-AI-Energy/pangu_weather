@@ -36,8 +36,11 @@ def test_earth_specific_block_shapes(batch_size, zhw_dim, roll, drop_path_ratio,
 
 
 parameters = "batch_size,zhw_dim,roll,drop_path_ratio"
-parameter_combinations = [params for params in itertools.product(BATCH_SIZES, ZHW_DIM, ROLL, DROP_PATH_RATIO)
-                          if not (params[0] > 1 and params[-1] > 0)]
+parameter_combinations = [
+    params
+    for params in itertools.product(BATCH_SIZES, ZHW_DIM, ROLL, DROP_PATH_RATIO)
+    if not (params[0] > 1 and params[-1] > 0)
+]
 parameter_combinations[0] = pytest.param(*parameter_combinations[0], marks=pytest.mark.smoke)
 
 
@@ -49,14 +52,14 @@ def test_earth_specific_block_random_sample(batch_size, zhw_dim, roll, drop_path
     input_shape = (batch_size, int(np.prod(zhw)), dim)
 
     torch.manual_seed(0)
-    earth_specific_block = EarthSpecificBlock(
-        dim, drop_path_ratio, roll, zhw, reproduce_mask=True).to(best_device)
+    earth_specific_block = EarthSpecificBlock(dim, drop_path_ratio, roll, zhw, reproduce_mask=True).to(best_device)
     torch.manual_seed(0)
     # to use the same initialization of the earth-specific bias: create on cpu first, then move to device
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
-        earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(
-            dim, drop_path_ratio, 6, 'cpu').to(best_device)
+        earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(dim, drop_path_ratio, 6, "cpu").to(
+            best_device
+        )
     earth_specific_block_pangu_pytorch.device = best_device
 
     x = torch.randn(input_shape, device=best_device)
@@ -88,7 +91,7 @@ def test_earth_specific_block_mask(batch_size, shape, reproduce_mask):
     earth_specific_block = EarthSpecificBlock(dim, drop_path_ratio, True, zhw, reproduce_mask=reproduce_mask)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
-        earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(dim, drop_path_ratio, 6, 'cpu')
+        earth_specific_block_pangu_pytorch = pangu_pytorch_layers.EarthSpecificBlock(dim, drop_path_ratio, 6, "cpu")
 
     mask = earth_specific_block.generate_attention_mask()
     mask_pangu_pytorch = earth_specific_block_pangu_pytorch.gen_mask(torch.zeros(input_shape))

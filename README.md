@@ -61,7 +61,7 @@ The run these tests, you first need to download and prepare the necessary data b
 ```
 python tests/prepare_test_data.py
 ```
-This downloads the example input and pre-trained weights from links provided in the README to the official repository https://github.com/198808xc/Pangu-Weather and extract the auxiliary data and torch checkpoint from the ONNX weights.  
+This downloads the example input and pre-trained weights from links provided in the README to the official repository https://github.com/198808xc/Pangu-Weather and extract the auxiliary data and torch checkpoint from the ONNX weights.
 The final structure should look like this:
 ```
 ├── pangu-weather
@@ -84,6 +84,6 @@ The final structure should look like this:
 If the necessary files are not available, the corresponding tests are skipped automatically.
 
 ## References
-[1] Bi, K., Xie, L., Zhang, H. et al. Accurate medium-range global weather forecasting with 3D neural networks. Nature 619, 533–538 (2023). https://doi.org/10.1038/s41586-023-06185-3  
-[2] https://github.com/198808xc/Pangu-Weather/blob/main/pseudocode.py  
-[3] https://github.com/zhaoshan2/pangu-pytorch  
+[1] Bi, K., Xie, L., Zhang, H. et al. Accurate medium-range global weather forecasting with 3D neural networks. Nature 619, 533–538 (2023). https://doi.org/10.1038/s41586-023-06185-3
+[2] https://github.com/198808xc/Pangu-Weather/blob/main/pseudocode.py
+[3] https://github.com/zhaoshan2/pangu-pytorch

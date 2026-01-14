@@ -46,8 +46,9 @@ def test_earth_attention_random_sample(batch_size, input_shape, masked, best_dev
     # to use the same initialization of the earth-specific bias: create on cpu first, then move to device
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
-        earth_attention_pangu_pytorch = pangu_pytorch_layers.EarthAttention3D(
-            dim, 6, 0, (2, 6, 12), device='cpu').to(best_device)
+        earth_attention_pangu_pytorch = pangu_pytorch_layers.EarthAttention3D(dim, 6, 0, (2, 6, 12), device="cpu").to(
+            best_device
+        )
 
     x = torch.randn(batch_size, *input_shape, device=best_device)
     mask = (torch.rand(input_shape[:2] + (144, 144), device=best_device) > 0.5) * -100 if masked else None

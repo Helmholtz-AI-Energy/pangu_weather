@@ -24,35 +24,40 @@ __all__ = [
     "onnx_inference_model",
 ]
 
-logger = logging.getLogger('pangu_weather.' + __name__)
+logger = logging.getLogger("pangu_weather." + __name__)
 
-TEST_DATA_DIR = pathlib.Path(__file__).parent / 'data'
+TEST_DATA_DIR = pathlib.Path(__file__).parent / "data"
 
-aux_data_path = TEST_DATA_DIR / 'aux_data'
-example_input_path = TEST_DATA_DIR / 'example_input'
-pretrained_model_path_onnx = TEST_DATA_DIR / 'pangu_weather_24.onnx'
-pretrained_model_path_torch = TEST_DATA_DIR / 'pangu_weather_24_torch.pth'
+aux_data_path = TEST_DATA_DIR / "aux_data"
+example_input_path = TEST_DATA_DIR / "example_input"
+pretrained_model_path_onnx = TEST_DATA_DIR / "pangu_weather_24.onnx"
+pretrained_model_path_torch = TEST_DATA_DIR / "pangu_weather_24_torch.pth"
 
 
 def get_available_torch_devices():
-    devices = ['cpu']
+    devices = ["cpu"]
     if torch.cuda.is_available():
-        devices.append('cuda')
+        devices.append("cuda")
     return devices
 
 
 def get_best_device():
-    return 'cuda' if torch.cuda.is_available() else 'cpu'
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def batch_size_device_product(all_device_batch_sizes=(1,), best_device_batch_sizes=(2, 4), smoke_test_batch_sizes=(1,)):
     smoke_tests = []
     if smoke_test_batch_sizes:
-        smoke_tests = [pytest.param(batch_size, get_best_device(), marks=pytest.mark.smoke)
-                       for batch_size in smoke_test_batch_sizes]
+        smoke_tests = [
+            pytest.param(batch_size, get_best_device(), marks=pytest.mark.smoke)
+            for batch_size in smoke_test_batch_sizes
+        ]
     all_device_pairs = itertools.product(all_device_batch_sizes, get_available_torch_devices())
-    all_device_pairs = [(batch_size, device) for batch_size, device in all_device_pairs
-                        if batch_size not in smoke_test_batch_sizes and device != get_best_device()]
+    all_device_pairs = [
+        (batch_size, device)
+        for batch_size, device in all_device_pairs
+        if batch_size not in smoke_test_batch_sizes and device != get_best_device()
+    ]
     best_device_pairs = [(batch_size, get_best_device()) for batch_size in best_device_batch_sizes]
     return smoke_tests + all_device_pairs + best_device_pairs
 
@@ -81,15 +86,15 @@ def load_example_input():
 
 
 def setup_onnxruntime_session(model_path):
-    logger.info('Setup ONNX runtime session.')
+    logger.info("Setup ONNX runtime session.")
     # Setup ONNX runtime as in official repository
     options = ort.SessionOptions()
     # options.enable_cpu_mem_arena = False
     # options.enable_mem_pattern = False
     # options.enable_mem_reuse = False
     # options.intra_op_num_threads = 1
-    cuda_provider = ('CUDAExecutionProvider', {'arena_extend_strategy': 'kSameAsRequested'})
-    cpu_provider = 'CPUExecutionProvider'
+    # cuda_provider = ("CUDAExecutionProvider", {"arena_extend_strategy": "kSameAsRequested"})
+    cpu_provider = "CPUExecutionProvider"
     providers = [cpu_provider]
 
     # Initialize onnxruntime session for Pangu-Weather Models
@@ -101,22 +106,25 @@ def onnx_inference_model(onnxruntime_session):
         start = time.time()
         # inference via ONNX runtime
         output_upper, output_surface = onnxruntime_session.run(
-            None, {'input': input_upper, 'input_surface': input_surface})
-        logger.info(f'ONNX forward pass took {time.time() - start:.3f}s.')
+            None, {"input": input_upper, "input_surface": input_surface}
+        )
+        logger.info(f"ONNX forward pass took {time.time() - start:.3f}s.")
         return torch.tensor(output_upper), torch.tensor(output_surface)
 
     def batched_inference_with_onnx_model(batched_input_upper, batched_input_surface):
         start = time.time()
-        logger.info('Inference with ONNX runtime.')
+        logger.info("Inference with ONNX runtime.")
         # convert input to float32 numpy arrays, not clear if necessary
         batched_input_upper = np.asarray(batched_input_upper, dtype=np.float32)
         batched_input_surface = np.asarray(batched_input_surface, dtype=np.float32)
         # run one forward pass per sample
-        outputs = [inference_with_onnx_model(batched_input_upper[sample], batched_input_surface[sample])
-                   for sample in range(batched_input_upper.shape[0])]
+        outputs = [
+            inference_with_onnx_model(batched_input_upper[sample], batched_input_surface[sample])
+            for sample in range(batched_input_upper.shape[0])
+        ]
         # combine outputs back to batched tensor
         batched_output_upper, batched_output_surface = [torch.stack(outputs) for outputs in zip(*outputs)]
-        logger.info(f'Total ONNX inference took {time.time() - start:.3f}s.')
+        logger.info(f"Total ONNX inference took {time.time() - start:.3f}s.")
         return batched_output_upper, batched_output_surface
 
     return batched_inference_with_onnx_model
