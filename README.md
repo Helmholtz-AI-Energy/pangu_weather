@@ -57,15 +57,11 @@ We provide pytest markers to select subsets of the tests:
 
 #### Downloading additional test data
 In addition to tests on random data and weights, we can also test using actual inputs and pre-trained weights.
-The run these tests, you first need to download and prepare the necessary data following the steps below.
-If the necessary files are not available, the corresponding tests are skipped automatically. 
-
-**Step 1:** Download the example input and pre-trained weights from links provided in the README to the official repository https://github.com/198808xc/Pangu-Weather
-- Download the example input `input_surface.npy` and `input_upper.npy` and place them in `pangu-weather/tests/data/example_input/`
-- Download the pre-trained weights `pangu_weather_24.onnx` and place them in `pangu-weather/tests/data/`
-
-**Step 2:** Extract the auxiliary data from the ONNX weights and convert them to a torch checkpoint by running `python tests/prepare_test_data.py`
-
+The run these tests, you first need to download and prepare the necessary data by running
+```
+python tests/prepare_test_data.py
+```
+This downloads the example input and pre-trained weights from links provided in the README to the official repository https://github.com/198808xc/Pangu-Weather and extract the auxiliary data and torch checkpoint from the ONNX weights.  
 The final structure should look like this:
 ```
 ├── pangu-weather
@@ -85,6 +81,7 @@ The final structure should look like this:
 │   │   │   ├── pangu_weather_24_torch.pth
 ```
 
+If the necessary files are not available, the corresponding tests are skipped automatically.
 
 ## References
 [1] Bi, K., Xie, L., Zhang, H. et al. Accurate medium-range global weather forecasting with 3D neural networks. Nature 619, 533–538 (2023). https://doi.org/10.1038/s41586-023-06185-3  

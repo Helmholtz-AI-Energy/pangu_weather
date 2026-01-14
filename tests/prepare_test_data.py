@@ -1,12 +1,13 @@
 import collections
 import logging
 
+import gdown
 import numpy
 import onnx
 import torch
 
 from pangu_weather.pangu_weather import get_onnx_constant_tensor, PanguWeather
-from tests.utils import aux_data_path, pretrained_model_path_onnx, pretrained_model_path_torch
+from utils import aux_data_path, pretrained_model_path_onnx, pretrained_model_path_torch, example_input_path
 
 logger = logging.getLogger('pangu_weather.' + __name__)
 
@@ -82,6 +83,28 @@ def convert_onnx_to_torch_checkpoint(onnx_path, torch_output_path, overwrite=Fal
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(asctime)s][%(levelname)s][%(name)s:%(lineno)d] - %(message)s")
+    download = True
+
+    # url to the pre-trained weights of the 24h pangu weather model and the example inputs
+    # from the official pangu weather repository (github.com/198808xc/Pangu-Weather)
+    gdrive_urls = {
+        pretrained_model_path_onnx:
+            'https://drive.google.com/file/d/1lweQlxcn9fG0zKNW8ne1Khr9ehRTI6HP/view?usp=share_link',
+        example_input_path / "input_upper.npy":
+            'https://drive.google.com/file/d/1--7xEBJt79E3oixizr8oFmK_haDE77SS/view?usp=share_link',
+        example_input_path / "input_surface.npy":
+            'https://drive.google.com/file/d/1pj8QEVNpC1FyJfUabDpV4oU3NpSe0BkD/view?usp=share_link',
+    }
+    example_input_path.mkdir(parents=True, exist_ok=True)
+
+    if download:
+        for path, url in gdrive_urls.items():
+            logger.info(f'{path.name} not found, from {url}.')
+            gdown.download(url, str(path), fuzzy=True)
+
+    if not pretrained_model_path_onnx.exists():
+        raise FileNotFoundError(
+            f'ONNX model file not found at {pretrained_model_path_onnx} and {download=}. Please download manually.')
 
     aux_data_path.mkdir(exist_ok=True, parents=True)
     extract_auxiliary_data_from_onnx(pretrained_model_path_onnx)

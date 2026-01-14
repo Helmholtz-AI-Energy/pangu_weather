@@ -31,10 +31,24 @@ jobs:
             python -m pip install --upgrade pip
             pip install ."[dev]"
 
+      - name: Cache test data
+        uses: actions/cache@v4
+        with:
+          path: |
+            tests/data/pangu_weather_24.onnx
+            tests/data/example_input/input_surface.npy
+            tests/data/example_input/input_upper.npy
+          key: pangu_weather_test_data
+
+      - name: Download and prepare test data
+        run: |
+            python tests/prepare_test_data.py
+
       - name: Test with pytest and measure coverage
         run: |
           coverage run -m pytest -m smoke
           coverage xml
+          coverage report
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1

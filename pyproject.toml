@@ -21,7 +21,8 @@ license-files = ["LICENSE"]
 dev = [
     "coverage",
     "pytest",
-    "onnxruntime"
+    "onnxruntime",
+    "gdown"
 ]
 
 [tool.pytest.ini_options]
