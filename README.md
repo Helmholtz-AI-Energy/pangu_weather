@@ -1,4 +1,9 @@
 # A PyTorch Implementation of Pangu-Weather with Multi-Sample Batch Support
+[![Python](https://img.shields.io/badge/Python-3.9+-69E2BC)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-69E2BC)](https://github.com/Helmholtz-AI-Energy/pangu_weather/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/badge/Code_Style-Ruff-69E2BC)](https://github.com/astral-sh/ruff)
+[![codecov](https://codecov.io/gh/Helmholtz-AI-Energy/pangu_weather/graph/badge.svg?token=H6KACMG2GX)](https://codecov.io/gh/Helmholtz-AI-Energy/pangu_weather)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Helmholtz-AI-Energy/pangu_weather/main.svg)](https://results.pre-commit.ci/latest/github/Helmholtz-AI-Energy/pangu_weather/main)
 
 This repository implements the Pangu-Weather model [1] based on the official pseudocode [2] in `pytorch` with support for batch sizes > 1.
 

@@ -56,4 +56,10 @@ docstring-code-format = true
 python_version = "3.11"
 modules = ["pangu_weather"]
 exclude = ['tests/']
+
 ignore_missing_imports = true
+## additional mypy options once we add type hints
+# disallow_untyped_defs = true
+# disallow_any_unimported = true
+# check_untyped_defs = true
+# warn_return_any = true
