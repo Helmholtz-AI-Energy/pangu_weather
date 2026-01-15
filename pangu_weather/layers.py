@@ -19,8 +19,9 @@ def flatten_list(nested_list):
 
 
 class PatchEmbedding(torch.nn.Module):
-    def __init__(self, patch_size, weather_statistics, constant_maps, const_h, dim=192, normalize_input=True,
-                 with_const_h=True):
+    def __init__(
+        self, patch_size, weather_statistics, constant_maps, const_h, dim=192, normalize_input=True, with_const_h=True
+    ):
         super().__init__()
         self.patch_size = patch_size
         self.dim = dim
@@ -43,17 +44,19 @@ class PatchEmbedding(torch.nn.Module):
         # const_h = an auxiliary mask of shape (1, 1, 1, 13, 721, 1440), unclear what it contains
         constant_buffers = self.prepare_constant_buffers(*weather_statistics, constant_maps, const_h)
         self.surface_mean, self.surface_std, self.upper_mean, self.upper_std, self.constant_maps, self.const_h = [
-            torch.nn.parameter.Buffer(tensor, persistent=False) for tensor in constant_buffers]
+            torch.nn.parameter.Buffer(tensor, persistent=False) for tensor in constant_buffers
+        ]
 
     @staticmethod
     def _check_shape_and_reshape(tensor, shape):
         if tensor.squeeze().shape != torch.Size([dim for dim in shape if dim != 1]):
-            raise ValueError(f'Tensor of shape {tensor.shape} does not match requested shape {shape}.')
+            raise ValueError(f"Tensor of shape {tensor.shape} does not match requested shape {shape}.")
         return tensor.view(shape)
 
     @staticmethod
-    def prepare_constant_buffers(surface_mean, surface_std, upper_mean, upper_std, constant_maps, const_h=None,
-                                 flip_pressure_levels=True):
+    def prepare_constant_buffers(
+        surface_mean, surface_std, upper_mean, upper_std, constant_maps, const_h=None, flip_pressure_levels=True
+    ):
         if const_h is not None:
             const_h = const_h.squeeze()
 
@@ -65,8 +68,10 @@ class PatchEmbedding(torch.nn.Module):
         # upper air: flip pressure levels & reshape [13, 1, 1, 5] to [5, 13, 1, 1] to match input [B, 5, 13, 721, 1440]
         upper_air_stats_shape = torch.Size([13, 1, 1, 5])
         if not (upper_mean.shape == upper_air_stats_shape and upper_std.shape == upper_air_stats_shape):
-            raise ValueError(f"Unexpected shapes {upper_mean.shape=}, {upper_std.shape=}. "
-                             f"Expected both to be of shape {upper_air_stats_shape}")
+            raise ValueError(
+                f"Unexpected shapes {upper_mean.shape=}, {upper_std.shape=}. "
+                f"Expected both to be of shape {upper_air_stats_shape}"
+            )
         if flip_pressure_levels:
             upper_mean = upper_mean.flip(0)
             upper_std = upper_std.flip(0)
@@ -148,24 +153,32 @@ class PatchEmbedding(torch.nn.Module):
 class PatchEmbeddingConv3d2d(PatchEmbedding):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.conv = torch.nn.Conv3d(in_channels=self.n_features_upper_air, out_channels=self.dim,
-                                    kernel_size=self.patch_size, stride=self.patch_size)
-        self.conv_surface = torch.nn.Conv2d(in_channels=self.n_features_surface, out_channels=self.dim,
-                                            kernel_size=self.patch_size[1:], stride=self.patch_size[1:])
+        self.conv = torch.nn.Conv3d(
+            in_channels=self.n_features_upper_air,
+            out_channels=self.dim,
+            kernel_size=self.patch_size,
+            stride=self.patch_size,
+        )
+        self.conv_surface = torch.nn.Conv2d(
+            in_channels=self.n_features_surface,
+            out_channels=self.dim,
+            kernel_size=self.patch_size[1:],
+            stride=self.patch_size[1:],
+        )
 
     def forward(self, upper_air_data, surface_data):
         # -------------- embedding of surface variables --------------
-        surface_data = self.prepare_and_pad_surface_input(surface_data)             # (B, 7, 724, 1440)
-        patched_surface = self.conv_surface(surface_data)                           # (B, C, 181,  360)
+        surface_data = self.prepare_and_pad_surface_input(surface_data)  # (B, 7, 724, 1440)
+        patched_surface = self.conv_surface(surface_data)  # (B, C, 181,  360)
 
         # -------------- embedding of upper air variables --------------
-        upper_air_data = self.prepare_and_pad_upper_air_input(upper_air_data)       # (B, 5/6, 14, 724, 1440)
-        patched_upper = self.conv(upper_air_data)                                   # (B,   C,  7, 181,  360)
+        upper_air_data = self.prepare_and_pad_upper_air_input(upper_air_data)  # (B, 5/6, 14, 724, 1440)
+        patched_upper = self.conv(upper_air_data)  # (B,   C,  7, 181,  360)
 
         # -------------- combine surface and upper air and reshape into (B, spatial, C) --------------
         x = torch.cat((patched_surface.unsqueeze(2), patched_upper), dim=2)  # (B, C, 8, 181, 360)
-        x = torch.permute(x, (0, 2, 3, 4, 1))                                  # (B, 8, 181, 360, C)
-        return x.reshape(x.shape[0], -1, self.dim)           # (B, 8 * 181 * 360, C) = (B,      521280, C)
+        x = torch.permute(x, (0, 2, 3, 4, 1))  # (B, 8, 181, 360, C)
+        return x.reshape(x.shape[0], -1, self.dim)  # (B, 8 * 181 * 360, C) = (B,      521280, C)
 
 
 class PatchEmbeddingConv1d(PatchEmbedding):
@@ -175,12 +188,13 @@ class PatchEmbeddingConv1d(PatchEmbedding):
         self.conv = torch.nn.Conv1d(in_channels=in_channels_upper, out_channels=self.dim, kernel_size=1, stride=1)
         in_channels_surface = np.prod(self.patch_size[1:]) * self.n_features_surface  # default 112
         self.conv_surface = torch.nn.Conv1d(
-            in_channels=in_channels_surface, out_channels=self.dim, kernel_size=1, stride=1)
+            in_channels=in_channels_surface, out_channels=self.dim, kernel_size=1, stride=1
+        )
 
     @staticmethod
     def reshape_into_patches(x, patch_size):
         if len(x.shape) != 2 + len(patch_size):
-            logger.warning(f'Mismatched shapes in patch embedding: {x.shape=} and {patch_size}.')
+            logger.warning(f"Mismatched shapes in patch embedding: {x.shape=} and {patch_size}.")
 
         # split last len(patch_size) dimensions into two: remainder patch dimension and (spatial) feature dimension
         # for surface (2D, patch_size=(4, 4)): [B, 7, 724, 1440] -> [B, 7, 181, 4, 360, 4]
@@ -200,23 +214,23 @@ class PatchEmbeddingConv1d(PatchEmbedding):
         # for surface (2D): [B, 7, 4, 4, 181, 360] -> [B, 112, 65160]
         # for upper air (3D): [B, 6, 2, 4, 4, 7, 181, 360] -> [B, 192, 456120]
         batch_size = permuted_x.shape[0]
-        feature_dim = int(np.prod(permuted_x.shape[1:2 + len(patch_size)]))
+        feature_dim = int(np.prod(permuted_x.shape[1 : 2 + len(patch_size)]))
         return permuted_x.reshape(batch_size, feature_dim, -1)
 
     def forward(self, upper_air_data, surface_data):
         # -------------- embedding of surface variables --------------
-        surface_data = self.prepare_and_pad_surface_input(surface_data)                 # (B, 7, 724, 1440)
+        surface_data = self.prepare_and_pad_surface_input(surface_data)  # (B, 7, 724, 1440)
         patched_surface = self.reshape_into_patches(surface_data, self.patch_size[1:])  # (B, 112, 65160)
-        patched_surface = self.conv_surface(patched_surface)                            # (B,   C, 65160)
+        patched_surface = self.conv_surface(patched_surface)  # (B,   C, 65160)
 
         # -------------- embedding of upper air variables --------------
-        upper_air_data = self.prepare_and_pad_upper_air_input(upper_air_data)           # (B, 5/6, 14, 724, 1440)
-        patched_upper = self.reshape_into_patches(upper_air_data, self.patch_size)      # (B, 192, 456120)
-        patched_upper = self.conv(patched_upper)                                        # (B,   C, 456120)
+        upper_air_data = self.prepare_and_pad_upper_air_input(upper_air_data)  # (B, 5/6, 14, 724, 1440)
+        patched_upper = self.reshape_into_patches(upper_air_data, self.patch_size)  # (B, 192, 456120)
+        patched_upper = self.conv(patched_upper)  # (B,   C, 456120)
 
         # -------------- combine surface and upper air and reshape into (B, spatial, C) --------------
-        x = torch.cat((patched_surface, patched_upper), dim=2)                  # (B, C, 521280)
-        x = torch.permute(x, (0, 2, 1))                                           # (B, 521280, C)
+        x = torch.cat((patched_surface, patched_upper), dim=2)  # (B, C, 521280)
+        x = torch.permute(x, (0, 2, 1))  # (B, 521280, C)
         return x
 
 
@@ -230,16 +244,18 @@ class PatchRecovery(torch.nn.Module):
         surface_variables = 4
         upper_variables = 5
         self.conv = torch.nn.Conv1d(
-            in_channels=dimension, out_channels=upper_variables * np.prod(patch_size), kernel_size=1)
+            in_channels=dimension, out_channels=upper_variables * np.prod(patch_size), kernel_size=1
+        )
         self.conv_surface = torch.nn.Conv1d(
-            in_channels=dimension, out_channels=surface_variables * np.prod(patch_size[1:]), kernel_size=1)
+            in_channels=dimension, out_channels=surface_variables * np.prod(patch_size[1:]), kernel_size=1
+        )
 
     @staticmethod
     def recover_from_patches(x, patch_size, zhw, original_dims):
         # Input: for surface (2D): [B, 64, 65160],  for upper air (3D): [B, 160, 456120]
         batch_size = x.shape[0]
-        patch_dims = zhw[-len(patch_size):]
-        original_dims = original_dims[-len(patch_size):]
+        patch_dims = zhw[-len(patch_size) :]
+        original_dims = original_dims[-len(patch_size) :]
         padded_dims = [true_dim + (patch - true_dim) % patch for patch, true_dim in zip(patch_size, original_dims)]
 
         # Recover [724, 1440] from patches
@@ -283,7 +299,8 @@ class PatchRecovery(torch.nn.Module):
         x_upper = self.conv(x_upper)
         # Recover patches: [B, 160, 456120] -> [B, 5, 13, 721, 1440]
         x_upper = self.recover_from_patches(
-            x_upper, self.patch_size, (self.zhw[0] - 1, *self.zhw[1:]), (self.pressure_levels, *self.original_hw))
+            x_upper, self.patch_size, (self.zhw[0] - 1, *self.zhw[1:]), (self.pressure_levels, *self.original_hw)
+        )
 
         return x_upper, x_surface
 
@@ -352,7 +369,7 @@ class UpSample(torch.nn.Module):
         # Reorder to move patch dims to spatial dims: [B, 8, 91, 180, 2, 2, 192] -> [B, 8, 91, 2, 180, 2, 192]
         x = x.permute((0, 1, 2, 4, 3, 5, 6))
         # Merge patch and spatial dimensions: [B, 8, 91, 2, 180, 2, 192] -> [B, 8, 182, 360, 192]
-        up_scaled_spatial = tuple(patch * dim for patch, dim in zip((1, ) + self.patch_size, self.input_shape_3d))
+        up_scaled_spatial = tuple(patch * dim for patch, dim in zip((1,) + self.patch_size, self.input_shape_3d))
         x = x.reshape(x.shape[:1] + up_scaled_spatial + x.shape[-1:])
         # Crop spatial dimensions to output dimensions: [B, 8, 182, 360, 192] -> [B, 8, 181, 360, 192]
         z_slice, h_slice, w_slice = [slice(0, dim) for dim in self.output_shape_3d]
@@ -377,10 +394,15 @@ class EarthSpecificLayer(torch.nn.Module):
         assert len(drop_path_ratio_list) == self.depth
 
         # initialize blocks, roll input every odd block, i.e. roll=bool(i % 2)
-        blocks = collections.OrderedDict([
-            (f'EarthSpecificBlock{i}',
-             EarthSpecificBlock(dim, drop_path, i % 2, zhw, num_heads, reproduce_mask=reproduce_mask))
-            for i, drop_path in enumerate(drop_path_ratio_list)])
+        blocks = collections.OrderedDict(
+            [
+                (
+                    f"EarthSpecificBlock{i}",
+                    EarthSpecificBlock(dim, drop_path, i % 2, zhw, num_heads, reproduce_mask=reproduce_mask),
+                )
+                for i, drop_path in enumerate(drop_path_ratio_list)
+            ]
+        )
         self.blocks = torch.nn.Sequential(blocks)
 
     def forward(self, x):
@@ -399,6 +421,7 @@ class EarthSpecificBlock(torch.nn.Module):
     Swin-Transformer's 2D window attention is extended to 3D and the relative position bias is replaced with an
     earth-specific bias.
     """
+
     def __init__(self, dim, drop_path_ratio, roll, zhw, num_heads=6, window_size=(2, 6, 12), reproduce_mask=False):
         super().__init__()
         self.dim = dim
@@ -412,7 +435,7 @@ class EarthSpecificBlock(torch.nn.Module):
         window_counts = [math.ceil(dim / size) for dim, size in zip(self.zhw, self.window_size)]
         self.type_of_windows = window_counts[0] * window_counts[1]
 
-        self.drop_path = timm.layers.DropPath(drop_path_ratio) if drop_path_ratio > 0. else torch.nn.Identity()
+        self.drop_path = timm.layers.DropPath(drop_path_ratio) if drop_path_ratio > 0.0 else torch.nn.Identity()
         self.norm1 = torch.nn.LayerNorm(dim)
         self.norm2 = torch.nn.LayerNorm(dim)
         self.linear = MLP(dim, 0)
@@ -445,7 +468,7 @@ class EarthSpecificBlock(torch.nn.Module):
         x = x.reshape(original_shape)
         return x
 
-    def generate_attention_mask(self, zhw=None, device='cpu', fill_value=-100.):
+    def generate_attention_mask(self, zhw=None, device="cpu", fill_value=-100.0):
         # Prepare the attention mask, based on 2D Swin-Transformer but adjusted for 3D sphere:
         # https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer.py#L223
         # Note: pangu-pytorch computes the slices incorrectly, to reproduce their exact results, set reproduce_mask=True
@@ -532,6 +555,7 @@ class EarthAttention3D(torch.nn.Module):
     3D window attention with Earth-Specific bias, based on Swin-Transformer's 2D window attention, extended to 3D and
     replacing the relative position bias with an earth-specific bias.
     """
+
     def __init__(self, dim, num_heads, dropout_rate, window_size, type_of_windows):
         super().__init__()
         self.dim = dim
@@ -551,7 +575,8 @@ class EarthAttention3D(torch.nn.Module):
         # same size as pangu-pytorch which matches the pretrained weights. This also means we don't construct or use
         # the position index (has already been applied to the pretrained weights?)
         self.earth_specific_bias = torch.zeros(
-            1, self.type_of_windows, self.num_heads, self.window_dim, self.window_dim)
+            1, self.type_of_windows, self.num_heads, self.window_dim, self.window_dim
+        )
         self.earth_specific_bias = torch.nn.Parameter(self.earth_specific_bias)
         timm.layers.trunc_normal_(self.earth_specific_bias, std=0.02)
 

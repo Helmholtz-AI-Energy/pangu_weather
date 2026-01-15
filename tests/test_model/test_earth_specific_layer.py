@@ -51,8 +51,9 @@ def test_earth_specific_layer_random_sample(batch_size, zhw_dim, depth, best_dev
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
         earth_specific_layer_pangu_pytorch = pangu_pytorch_layers.EarthSpecificLayer(
-            depth, dim, drop_path_ratios, 6, False, 'cpu').to(best_device)
-    earth_specific_layer_pangu_pytorch.apply(lambda module: setattr(module, 'device', best_device))
+            depth, dim, drop_path_ratios, 6, False, "cpu"
+        ).to(best_device)
+    earth_specific_layer_pangu_pytorch.apply(lambda module: setattr(module, "device", best_device))
 
     x = torch.randn(input_shape, device=best_device)
     with torch.no_grad():

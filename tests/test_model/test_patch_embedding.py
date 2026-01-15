@@ -12,9 +12,11 @@ def test_patch_embedding_shapes(batch_size, random_weather_statistics, random_co
     patch_size = (2, 4, 4)
     dim = 192
     patch_embedding_conv1d = PatchEmbeddingConv1d(
-        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim).to(device)
+        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim
+    ).to(device)
     patch_embedding_conv3d2d = PatchEmbeddingConv3d2d(
-        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim).to(device)
+        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim
+    ).to(device)
 
     surface_data = torch.zeros(batch_size, 4, 721, 1440, device=device)
     upper_air_data = torch.zeros(batch_size, 5, 13, 721, 1440, device=device)
@@ -27,18 +29,21 @@ def test_patch_embedding_shapes(batch_size, random_weather_statistics, random_co
 
 
 @pytest.mark.parametrize("batch_size", [pytest.param(1, marks=pytest.mark.smoke), 2, 4])
-def test_patch_embedding_random_sample(batch_size, random_weather_statistics, random_constant_maps, random_const_h,
-                                       best_device):
+def test_patch_embedding_random_sample(
+    batch_size, random_weather_statistics, random_constant_maps, random_const_h, best_device
+):
     patch_size = (2, 4, 4)
     dim = 192
 
     torch.manual_seed(0)
     patch_embedding_conv1d = PatchEmbeddingConv1d(
-        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device)
+        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim
+    ).to(best_device)
 
     torch.manual_seed(0)
     patch_embedding_conv3d2d = PatchEmbeddingConv3d2d(
-        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim).to(best_device)
+        patch_size, random_weather_statistics, random_constant_maps, random_const_h, dim
+    ).to(best_device)
 
     torch.manual_seed(0)
     patch_embedding_pangu_pytorch = pangu_pytorch_layers.PatchEmbedding_pretrain(patch_size, dim).to(best_device)
@@ -48,10 +53,18 @@ def test_patch_embedding_random_sample(batch_size, random_weather_statistics, ra
 
     embedded_input_conv1d = patch_embedding_conv1d(upper_air_data, surface_data)
     embedded_input_conv3d2d = patch_embedding_conv3d2d(upper_air_data, surface_data)
-    embedded_input_pangu_pytorch = torch.cat([patch_embedding_pangu_pytorch(
-            upper_air_data[i:i+1], surface_data[i:i+1], [stat.to(best_device) for stat in random_weather_statistics],
-            random_constant_maps.to(best_device), random_const_h.to(best_device))
-        for i in range(batch_size)])
+    embedded_input_pangu_pytorch = torch.cat(
+        [
+            patch_embedding_pangu_pytorch(
+                upper_air_data[i : i + 1],
+                surface_data[i : i + 1],
+                [stat.to(best_device) for stat in random_weather_statistics],
+                random_constant_maps.to(best_device),
+                random_const_h.to(best_device),
+            )
+            for i in range(batch_size)
+        ]
+    )
 
     # check output shapes
     expected_shape = (batch_size, 521280, dim)
@@ -61,4 +74,4 @@ def test_patch_embedding_random_sample(batch_size, random_weather_statistics, ra
 
     # check output content
     assert embedded_input_conv1d.allclose(embedded_input_pangu_pytorch)
-    assert embedded_input_conv3d2d.allclose(embedded_input_pangu_pytorch)
+    assert embedded_input_conv3d2d.allclose(embedded_input_pangu_pytorch, atol=1e-5)

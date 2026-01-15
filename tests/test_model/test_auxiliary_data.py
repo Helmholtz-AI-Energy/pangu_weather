@@ -1,21 +1,18 @@
-import logging
-
 import onnx
 import pytest
 import torch
 
 from pangu_weather.pangu_weather import get_onnx_constant_tensor
-from tests.utils import pretrained_model_path_onnx
 
 
-@pytest.fixture(scope='module')
-def onnx_model():
+@pytest.fixture(scope="module")
+def onnx_model(pretrained_model_path_onnx):
     return onnx.load(pretrained_model_path_onnx)
 
 
 @pytest.mark.smoke
 def test_const_h(const_h, onnx_model):
-    onnx_const_h = get_onnx_constant_tensor(onnx_model, '/b1/Constant_17')
+    onnx_const_h = get_onnx_constant_tensor(onnx_model, "/b1/Constant_17")
 
     assert const_h.shape == onnx_const_h.shape
     assert const_h.allclose(onnx_const_h)
@@ -23,7 +20,7 @@ def test_const_h(const_h, onnx_model):
 
 @pytest.mark.smoke
 def test_constant_maps(constant_maps, onnx_model):
-    onnx_constant_maps = get_onnx_constant_tensor(onnx_model, '/b1/Constant_44')
+    onnx_constant_maps = get_onnx_constant_tensor(onnx_model, "/b1/Constant_44")
 
     assert constant_maps.shape == onnx_constant_maps.shape
     assert constant_maps.allclose(onnx_constant_maps)
@@ -33,10 +30,10 @@ def test_constant_maps(constant_maps, onnx_model):
 def test_weather_statistics_input(weather_statistics, onnx_model):
     surface_mean, surface_std, upper_mean, upper_std = weather_statistics
 
-    onnx_surface_mean = get_onnx_constant_tensor(onnx_model, '/b1/Constant_11')
-    onnx_surface_std = get_onnx_constant_tensor(onnx_model, '/b1/Constant_12')
-    onnx_upper_mean = get_onnx_constant_tensor(onnx_model, '/b1/Constant_9')
-    onnx_upper_std = get_onnx_constant_tensor(onnx_model, '/b1/Constant_10')
+    onnx_surface_mean = get_onnx_constant_tensor(onnx_model, "/b1/Constant_11")
+    onnx_surface_std = get_onnx_constant_tensor(onnx_model, "/b1/Constant_12")
+    onnx_upper_mean = get_onnx_constant_tensor(onnx_model, "/b1/Constant_9")
+    onnx_upper_std = get_onnx_constant_tensor(onnx_model, "/b1/Constant_10")
 
     assert surface_mean.shape == onnx_surface_mean.shape
     assert surface_mean.allclose(onnx_surface_mean)
@@ -58,10 +55,10 @@ def test_weather_statistics_output(weather_statistics, onnx_model):
     upper_mean = upper_mean.flip(0).permute(3, 0, 1, 2).view(5, 1, 13, 1, 1)
     upper_std = upper_std.flip(0).permute(3, 0, 1, 2).view(5, 1, 13, 1, 1)
 
-    onnx_surface_mean = get_onnx_constant_tensor(onnx_model, '/b1/Constant_3294')
-    onnx_surface_std = get_onnx_constant_tensor(onnx_model, '/b1/Constant_3293')
-    onnx_upper_mean = get_onnx_constant_tensor(onnx_model, '/b1/Constant_3292')
-    onnx_upper_std = get_onnx_constant_tensor(onnx_model, '/b1/Constant_3291')
+    onnx_surface_mean = get_onnx_constant_tensor(onnx_model, "/b1/Constant_3294")
+    onnx_surface_std = get_onnx_constant_tensor(onnx_model, "/b1/Constant_3293")
+    onnx_upper_mean = get_onnx_constant_tensor(onnx_model, "/b1/Constant_3292")
+    onnx_upper_std = get_onnx_constant_tensor(onnx_model, "/b1/Constant_3291")
 
     assert surface_mean.shape == onnx_surface_mean.shape
     assert surface_mean.allclose(onnx_surface_mean)
@@ -95,7 +92,7 @@ def test_normalize_denormalize_weather(batch_size, best_device, weather_statisti
     normalized_denormalized_input = denormalize(*normalize(upper_air_data, surface_data))
     denormalized_normalized_input = normalize(*denormalize(upper_air_data, surface_data))
 
-    for (processed_upper, processed_surface) in [normalized_denormalized_input, denormalized_normalized_input]:
+    for processed_upper, processed_surface in [normalized_denormalized_input, denormalized_normalized_input]:
         # check that the shape stays the same
         assert processed_upper.shape == upper_air_data.shape
         assert processed_surface.shape == surface_data.shape

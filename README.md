@@ -1,4 +1,9 @@
 # A PyTorch Implementation of Pangu-Weather with Multi-Sample Batch Support
+[![Python](https://img.shields.io/badge/Python-3.9+-69E2BC)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-69E2BC)](https://github.com/Helmholtz-AI-Energy/pangu_weather/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/badge/Code_Style-Ruff-69E2BC)](https://github.com/astral-sh/ruff)
+[![codecov](https://codecov.io/gh/Helmholtz-AI-Energy/pangu_weather/graph/badge.svg?token=H6KACMG2GX)](https://codecov.io/gh/Helmholtz-AI-Energy/pangu_weather)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Helmholtz-AI-Energy/pangu_weather/main.svg)](https://results.pre-commit.ci/latest/github/Helmholtz-AI-Energy/pangu_weather/main)
 
 This repository implements the Pangu-Weather model [1] based on the official pseudocode [2] in `pytorch` with support for batch sizes > 1.
 
@@ -57,15 +62,11 @@ We provide pytest markers to select subsets of the tests:
 
 #### Downloading additional test data
 In addition to tests on random data and weights, we can also test using actual inputs and pre-trained weights.
-The run these tests, you first need to download and prepare the necessary data following the steps below.
-If the necessary files are not available, the corresponding tests are skipped automatically. 
-
-**Step 1:** Download the example input and pre-trained weights from links provided in the README to the official repository https://github.com/198808xc/Pangu-Weather
-- Download the example input `input_surface.npy` and `input_upper.npy` and place them in `pangu-weather/tests/data/example_input/`
-- Download the pre-trained weights `pangu_weather_24.onnx` and place them in `pangu-weather/tests/data/`
-
-**Step 2:** Extract the auxiliary data from the ONNX weights and convert them to a torch checkpoint by running `python tests/prepare_test_data.py`
-
+The run these tests, you first need to download and prepare the necessary data by running
+```
+python tests/prepare_test_data.py
+```
+This downloads the example input and pre-trained weights from links provided in the README to the official repository https://github.com/198808xc/Pangu-Weather and extract the auxiliary data and torch checkpoint from the ONNX weights.
 The final structure should look like this:
 ```
 ├── pangu-weather
@@ -85,8 +86,9 @@ The final structure should look like this:
 │   │   │   ├── pangu_weather_24_torch.pth
 ```
 
+If the necessary files are not available, the corresponding tests are skipped automatically.
 
 ## References
-[1] Bi, K., Xie, L., Zhang, H. et al. Accurate medium-range global weather forecasting with 3D neural networks. Nature 619, 533–538 (2023). https://doi.org/10.1038/s41586-023-06185-3  
-[2] https://github.com/198808xc/Pangu-Weather/blob/main/pseudocode.py  
-[3] https://github.com/zhaoshan2/pangu-pytorch  
+[1] Bi, K., Xie, L., Zhang, H. et al. Accurate medium-range global weather forecasting with 3D neural networks. Nature 619, 533–538 (2023). https://doi.org/10.1038/s41586-023-06185-3
+[2] https://github.com/198808xc/Pangu-Weather/blob/main/pseudocode.py
+[3] https://github.com/zhaoshan2/pangu-pytorch

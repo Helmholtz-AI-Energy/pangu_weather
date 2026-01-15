@@ -12,7 +12,8 @@ from pangu_weather.pangu_weather import load_pangu_pretrained_weights
 
 class PanguWeatherBackbone(torch.nn.Module):
     """Counterpart to pangu_finetuning.model.PanguWeatherBackbone using pangu_pytorch layers for testing."""
-    def __init__(self, weather_statistics, constant_maps, const_h, dimension=192, drop_path=False, device='cpu'):
+
+    def __init__(self, weather_statistics, constant_maps, const_h, dimension=192, drop_path=False, device="cpu"):
         super().__init__()
         self.dimension = dimension
 
@@ -30,7 +31,7 @@ class PanguWeatherBackbone(torch.nn.Module):
 
         # Four earth-specific layers
         with warnings.catch_warnings():
-            kwargs = {'use_checkpoint': self.training, 'device': device}
+            kwargs = {"use_checkpoint": self.training, "device": device}
             warnings.filterwarnings("ignore", category=UserWarning)
             layers = [
                 pangu_pytorch_layers.EarthSpecificLayer(2, self.dimension, drop_path_rate[0:2], 6, **kwargs),
@@ -39,14 +40,15 @@ class PanguWeatherBackbone(torch.nn.Module):
                 pangu_pytorch_layers.EarthSpecificLayer(2, self.dimension, drop_path_rate[14:], 6, **kwargs),
             ]
         self.layers = torch.nn.Sequential(
-            OrderedDict([(f'EarthSpecificLayer{i}', layer) for i, layer in enumerate(layers)]))
+            OrderedDict([(f"EarthSpecificLayer{i}", layer) for i, layer in enumerate(layers)])
+        )
 
         self.initialize_weights()
 
     def initialize_weights(self):
         def init_layer_weight(layer):
             if isinstance(layer, torch.nn.Linear):
-                timm.layers.trunc_normal_(layer.weight, std=.02)
+                timm.layers.trunc_normal_(layer.weight, std=0.02)
                 if isinstance(layer, torch.nn.Linear) and layer.bias is not None:
                     torch.nn.init.constant_(layer.bias, 0)
             elif isinstance(layer, torch.nn.LayerNorm):
@@ -58,8 +60,13 @@ class PanguWeatherBackbone(torch.nn.Module):
     def forward(self, upper_air_data, surface_data):
         # patch embedding
         device = upper_air_data.device
-        x = self._input_layer(upper_air_data, surface_data, tuple(stat.to(device) for stat in self.weather_statistics),
-                              self.constant_maps.to(device), self.const_h.to(device))
+        x = self._input_layer(
+            upper_air_data,
+            surface_data,
+            tuple(stat.to(device) for stat in self.weather_statistics),
+            self.constant_maps.to(device),
+            self.const_h.to(device),
+        )
 
         # encoder
         with warnings.catch_warnings():
@@ -77,21 +84,22 @@ class PanguWeatherBackbone(torch.nn.Module):
         # skip connection -> (B, 521280, 2C)
         return torch.cat((skip, x), dim=-1)
 
-    def load_pretrained_weights(self, path, device='cpu'):
-        load_pangu_pretrained_weights(self, path, device, [], ['_output_layer'])
+    def load_pretrained_weights(self, path, device="cpu"):
+        load_pangu_pretrained_weights(self, path, device, [], ["_output_layer"])
 
 
 class PanguWeather(torch.nn.Module):
     """Counterpart to pangu_finetuning.model.PanguWeather using pangu_pytorch layers for testing."""
-    def __init__(self, weather_statistics, constant_maps, const_h, dimension=192, device='cpu'):
+
+    def __init__(self, weather_statistics, constant_maps, const_h, dimension=192, device="cpu"):
         super().__init__()
         self.dimension = dimension
         self.backbone = PanguWeatherBackbone(weather_statistics, constant_maps, const_h, dimension, device=device)
         self._output_layer = pangu_pytorch_layers.PatchRecovery_pretrain(2 * self.dimension)
 
-    def load_pretrained_weights(self, path, device='cpu'):
-        expected_missing_modules = ['backbone']
-        expected_additional_modules = ['_input_layer', 'downsample', 'upsample', 'layers']
+    def load_pretrained_weights(self, path, device="cpu"):
+        expected_missing_modules = ["backbone"]
+        expected_additional_modules = ["_input_layer", "downsample", "upsample", "layers"]
         load_pangu_pretrained_weights(self, path, device, expected_missing_modules, expected_additional_modules)
         self.backbone.load_pretrained_weights(path, device)
 
@@ -101,4 +109,3 @@ class PanguWeather(torch.nn.Module):
         # Patch recovery to extract output
         x = self._output_layer(x, 8, 181, 360)
         return x  # upper_air_prediction, surface_prediction
-
