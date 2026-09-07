@@ -3,9 +3,9 @@ import logging
 import math
 
 import numpy as np
+import timm.layers
 import torch
 import torch.utils.checkpoint
-import timm.layers
 
 # Implementation of PanguWeather in PyTorch based on the official pseudocode given in
 # https://github.com/198808xc/Pangu-Weather/blob/main/pseudocode.py
