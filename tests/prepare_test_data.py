@@ -6,9 +6,9 @@ import gdown
 import numpy
 import onnx
 import torch
+from utils import aux_data_path, example_input_path, pretrained_model_path_onnx, pretrained_model_path_torch
 
-from pangu_weather.pangu_weather import get_onnx_constant_tensor, PanguWeather
-from utils import aux_data_path, pretrained_model_path_onnx, pretrained_model_path_torch, example_input_path
+from pangu_weather.pangu_weather import PanguWeather, get_onnx_constant_tensor
 
 logger = logging.getLogger("pangu_weather." + __name__)
 
@@ -105,8 +105,7 @@ def download_onnx_weights_and_example_input(overwrite=False):
         if overwrite or not path.exists():
             logger.info(f"{path.name} not found, from {url}.")
             gdown.download(url, str(path), fuzzy=True)
-    else:
-        logger.info("Done, all files already downloaded.")
+    logger.info("Done, all files already downloaded.")
 
 
 if __name__ == "__main__":
