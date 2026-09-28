@@ -9,7 +9,6 @@ from pangu_weather.layers import EarthSpecificLayer
 from tests.test_model.pangu_pytorch_model import pangu_pytorch_layers
 from tests.utils import get_available_torch_devices
 
-
 BATCH_SIZES = [1, 2, 4]
 ZHW_DIM = [(8, 181, 360, 192), (8, 91, 180, 384)]
 DEPTH = [1, 2]

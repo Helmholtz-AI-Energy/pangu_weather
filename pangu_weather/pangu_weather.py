@@ -5,11 +5,10 @@ from collections import OrderedDict
 
 import onnx
 import pandas
-import torch
 import timm.layers
+import torch
 
-from pangu_weather.layers import PatchEmbeddingConv1d, DownSample, EarthSpecificLayer, UpSample, PatchRecovery
-
+from pangu_weather.layers import DownSample, EarthSpecificLayer, PatchEmbeddingConv1d, PatchRecovery, UpSample
 
 logger = logging.getLogger(__name__)
 
