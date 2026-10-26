@@ -1,10 +1,10 @@
 import logging
 
+import pangu_pytorch_model
 import pytest
 import torch
 
 from pangu_weather.pangu_weather import PanguWeather, PanguWeatherBackbone
-import pangu_pytorch_model
 from tests.utils import batched_repeat
 
 logger = logging.getLogger("pangu_weather." + __name__)
